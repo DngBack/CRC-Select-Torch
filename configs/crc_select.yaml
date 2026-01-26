@@ -1,0 +1,51 @@
+# CRC-Select Configuration File
+# This file contains default hyperparameters for CRC-Select experiments
+
+model:
+  dim_features: 512
+  dropout_prob: 0.3
+  div_by_ten: false
+
+data:
+  dataset: cifar10
+  dataroot: ../data
+  batch_size: 128
+  num_workers: 8
+  normalize: true
+  augmentation: original  # options: original, tf, lili
+
+# CRC-Select specific parameters
+crc_select:
+  alpha_risk: 0.1           # Target risk level (e.g., 0.1 for 10% risk)
+  tau: 0.5                  # Acceptance threshold for selector g(x)
+  warmup_epochs: 20         # Number of warmup epochs without CRC penalty
+  recalibrate_every: 5      # Recalibrate q every N epochs
+  mu_init: 1.0              # Initial value for risk penalty multiplier
+  dual_lr: 0.01             # Learning rate for dual update of mu
+  delta: 0.1                # Failure probability for CRC bound
+  use_dual_update: true     # Whether to use dual ascent to update mu
+
+# Training parameters
+training:
+  num_epochs: 200
+  lr: 0.1                   # Initial learning rate
+  wd: 0.0005                # Weight decay
+  momentum: 0.9
+  nesterov: false
+  scheduler_step: 25        # Step size for learning rate scheduler
+  scheduler_gamma: 0.5      # Gamma for learning rate scheduler
+
+# SelectiveNet loss parameters
+selective_loss:
+  coverage: 0.8             # Target coverage
+  alpha: 0.5                # Mix weight between selective_loss and ce_loss
+  lm: 32.0                  # Lagrange multiplier for coverage constraint
+
+# Evaluation parameters
+evaluation:
+  taus: [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8]
+  alphas: [0.05, 0.1, 0.15, 0.2]
+  ood_dataset: svhn
+  ood_mixtures: [0.1, 0.3, 0.5]
+  seeds: [42, 123, 456]     # Random seeds for reproducibility
+

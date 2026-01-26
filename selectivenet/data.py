@@ -29,11 +29,11 @@ class DatasetBuilder(object):
         self.name = name
         self.root_path = os.path.join(root_path, self.name)
 
-    def __call__(self, train:bool, normalize:bool, augmentation:str):
+    def __call__(self, train:bool, normalize:bool, augmentation:str='original'):
         input_size = self.DATASET_CONFIG[self.name].input_size
         transform = self._get_transform(self.name, input_size, train, normalize, augmentation)
         if self.name == 'svhn':
-            dataset = torchvision.datasets.SVHN(root=self.root_path, split='train' if self.train else 'test', transform=transform, download=True)
+            dataset = torchvision.datasets.SVHN(root=self.root_path, split='train' if train else 'test', transform=transform, download=True)
         elif self.name == 'cifar10':
             dataset = torchvision.datasets.CIFAR10(root=self.root_path, train=train, transform=transform, download=True)
         else: 
@@ -83,15 +83,74 @@ class DatasetBuilder(object):
     def num_classes(self):
         return self.DATASET_CONFIG[self.name].num_classes
 
+    def get_ood_loader(
+        self, 
+        ood_name: str, 
+        batch_size: int, 
+        normalize_to_id: bool = True,
+        num_workers: int = 8,
+        pin_memory: bool = True
+    ):
+        """
+        Get DataLoader for OOD dataset.
+        
+        Args:
+            ood_name: Name of OOD dataset (e.g., 'svhn')
+            batch_size: Batch size for DataLoader
+            normalize_to_id: If True, normalize OOD using ID dataset statistics
+            num_workers: Number of workers for DataLoader
+            pin_memory: Pin memory for DataLoader
+        
+        Returns:
+            DataLoader for OOD dataset
+        """
+        if ood_name not in self.DATASET_CONFIG.keys():
+            raise ValueError(f'OOD dataset {ood_name} is not supported')
+        
+        # Get normalization stats - use ID dataset if requested
+        norm_name = self.name if normalize_to_id else ood_name
+        input_size = self.DATASET_CONFIG[ood_name].input_size
+        
+        # Create transform (no augmentation for OOD evaluation)
+        transform = self._get_transform(
+            norm_name, input_size, train=False, 
+            normalize=True, augmentation='original'
+        )
+        
+        # Load OOD dataset
+        ood_root = os.path.join(os.path.dirname(self.root_path), ood_name)
+        if ood_name == 'svhn':
+            ood_dataset = torchvision.datasets.SVHN(
+                root=ood_root, split='test', transform=transform, download=True
+            )
+        elif ood_name == 'cifar10':
+            ood_dataset = torchvision.datasets.CIFAR10(
+                root=ood_root, train=False, transform=transform, download=True
+            )
+        else:
+            raise NotImplementedError(f'OOD dataset {ood_name} not implemented')
+        
+        # Create DataLoader
+        ood_loader = torch.utils.data.DataLoader(
+            ood_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=pin_memory
+        )
+        
+        return ood_loader
+
     def _get_mean_and_std(self):
         """
         Function that computes mean and std used in DATASET_CONFIG
         """
+        import numpy as np
         if self.name == 'cifar10':
-            dataset = torchvision.datasets.CIFAR10(root=self.root_path, train=train, download=True)
+            dataset = torchvision.datasets.CIFAR10(root=self.root_path, train=True, download=True)
             all_data = np.stack([np.asarray(x[0]) for x in dataset])
-            mean = np.mean(all_data, axis=(0,2,3))
-            std = np.std(all_data, axis=(0,2,3))
+            mean = np.mean(all_data, axis=(0,2,3)) / 255.0
+            std = np.std(all_data, axis=(0,2,3)) / 255.0
         else: 
             raise NotImplementedError 
         return mean, std
