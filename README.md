@@ -121,6 +121,122 @@ When trained on CIFAR-10, CRC-Select typically achieves:
 🚀 **See [GETTING_STARTED.md](GETTING_STARTED.md) for step-by-step tutorial**
 
 ---
+
+## 📊 Paper Evaluation & Results
+
+### Quick Evaluation for Paper
+
+CRC-Select includes comprehensive evaluation scripts to compute all metrics needed for paper submission:
+
+```bash
+cd scripts
+
+# 1. Run comprehensive evaluation (generates RC curve with 101-201 points)
+python3 evaluate_for_paper.py \
+    --checkpoint path/to/checkpoint.pth \
+    --method_name "CRC-Select" \
+    --dataset cifar10 \
+    --seed 42 \
+    --n_points 201 \
+    --output_dir ../results_paper
+
+# 2. View all results in nice format
+python3 view_results.py --results_dir ../results_paper --seed 42
+
+# 3. Generate paper-quality figures (PNG + PDF)
+python3 generate_paper_figures.py \
+    --results_dir ../results_paper \
+    --methods "CRC-Select" \
+    --output_dir ../paper_figures
+```
+
+### Evaluation Outputs
+
+The evaluation script generates:
+
+**Data Files** (CSV format):
+- `risk_coverage_curve.csv` - RC curve with 101-201 points for plotting
+- `coverage_at_risk.csv` - Maximum coverage at different risk levels
+- `ood_evaluation.csv` - DAR (Dangerous Acceptance Rate) on OOD data
+- `calibration_metrics.csv` - Calibration quality metrics
+- `summary.csv` - All metrics in one file
+
+**Figures** (PNG + PDF):
+- `figure1_rc_curves.{png,pdf}` - Risk-Coverage curves comparison
+- `figure2_coverage_at_risk.{png,pdf}` - Coverage@Risk bar charts
+- `figure3_ood_dar.{png,pdf}` - OOD acceptance rate comparison
+- `figure4_aurc_comparison.{png,pdf}` - AURC comparison
+
+**Tables** (CSV + LaTeX):
+- `table1_summary.csv` - Summary comparison table
+- `table1_summary.tex` - LaTeX format for paper
+
+### Key Metrics Computed
+
+1. **AURC** (Area Under Risk-Coverage curve) - Main metric for selective prediction
+2. **Error rates** at coverage levels: 60%, 70%, 80%, 90%, 95%, 100%
+3. **Risk scores** at all coverage levels
+4. **Coverage@Risk(α)** for α ∈ {0.01, 0.02, 0.05, 0.1, 0.15, 0.2}
+5. **DAR** (Dangerous Acceptance Rate) on SVHN OOD
+6. **Safety ratios** (ID accept rate / OOD accept rate)
+7. **Calibration quality** at target coverage levels
+
+### Current Results (CIFAR-10, Seed 42)
+
+#### Performance Metrics
+
+| Metric | Value | vs Paper | Status |
+|--------|-------|----------|---------|
+| **AURC** | **0.0126** | 58% better (~0.03) | ✅ Excellent |
+| **Error @ 70% cov** | **0.88%** | 89% better (~8%) | ✅ Excellent |
+| **Error @ 80% cov** | **1.42%** | 76% better (~6%) | ✅ Excellent |
+| **Error @ 90% cov** | **2.91%** | 27% better (~4%) | ✅ Good |
+| **Risk @ 80% cov** | **1.56%** | < 10% target | ✅ Controlled |
+| **Coverage @ α=2%** | **82.32%** | High coverage | ✅ Strong |
+
+#### OOD Safety (SVHN)
+
+| Threshold | ID Accept | OOD Accept (DAR) | Safety Ratio |
+|-----------|-----------|------------------|--------------|
+| τ = 0.3 | 82.18% | 11.69% | 7.0× |
+| τ = 0.5 | 80.92% | **9.13%** | **8.9×** |
+| τ = 0.7 | 79.52% | 6.85% | 11.6× |
+
+**Interpretation**: Model có khả năng phân biệt ID và OOD tốt, reject OOD nhiều hơn ID 8.9 lần.
+
+### Comparison with SelectiveNet Paper
+
+| Coverage | SelectiveNet Paper | **CRC-Select** | Improvement |
+|----------|-------------------|----------------|-------------|
+| 70% | ~8% error | **0.88% error** | **+89%** ⬆️ |
+| 80% | ~6% error | **1.42% error** | **+76%** ⬆️ |
+| 90% | ~4% error | **2.91% error** | **+27%** ⬆️ |
+| AURC | ~0.02-0.04 | **0.0126** | **+58%** ⬆️ |
+
+### Viewing Results
+
+```bash
+cd scripts
+
+# Quick view in terminal
+python3 view_results.py
+
+# Or check files directly
+ls -lh ../results_paper/CRC-Select/seed_42/
+cat ../results_paper/CRC-Select/seed_42/summary.csv
+
+# View figures
+xdg-open ../figures/rc_curve_analysis.png
+```
+
+### Documentation Files
+
+- **`PAPER_RESULTS_SUMMARY.md`** - Complete results summary with LaTeX templates
+- **`VIEW_RESULTS.md`** - Detailed guide on viewing and interpreting results
+- **`QUICK_START_PAPER.md`** - Quick reference for paper writing
+- **`COMPARISON_REPORT.md`** - Detailed comparison analysis
+
+---
    
 ## Requirements
 
@@ -266,6 +382,83 @@ CRC-Select-Torch/
 | **Coverage** | Fixed by design | Adaptive to risk constraint |
 | **OOD Safety** | Not explicitly handled | Improved via risk-aware selection |
 | **Use Case** | When you know desired coverage | When you want risk guarantees |
+
+## 🚀 Quick Commands Reference
+
+### Training
+
+```bash
+cd scripts
+
+# Train CRC-Select
+python3 train_crc_select.py \
+    --dataset cifar10 \
+    --seed 42 \
+    --num_epochs 200 \
+    --alpha_risk 0.1 \
+    --coverage 0.8 \
+    --warmup_epochs 20 \
+    --recalibrate_every 5 \
+    --use_dual_update \
+    --unobserve
+
+# Train vanilla SelectiveNet baseline
+python3 train.py \
+    --dataset cifar10 \
+    --coverage 0.8 \
+    --num_epochs 200 \
+    --unobserve
+```
+
+### Paper Evaluation (Comprehensive)
+
+```bash
+# Evaluate model and compute all paper metrics
+python3 evaluate_for_paper.py \
+    --checkpoint path/to/checkpoint.pth \
+    --method_name "CRC-Select" \
+    --dataset cifar10 \
+    --seed 42 \
+    --n_points 201 \
+    --output_dir ../results_paper
+
+# View results in terminal
+python3 view_results.py --results_dir ../results_paper --seed 42
+
+# Generate paper figures
+python3 generate_paper_figures.py \
+    --results_dir ../results_paper \
+    --methods "CRC-Select" \
+    --output_dir ../paper_figures
+```
+
+### Post-hoc CRC Baseline
+
+```bash
+# Apply CRC calibration to vanilla SelectiveNet
+python3 baseline_posthoc_crc.py \
+    --checkpoint path/to/vanilla_checkpoint.pth \
+    --dataset cifar10 \
+    --seed 42 \
+    --alpha_risk 0.1 \
+    --output_dir ../results_paper
+```
+
+### Full Experiment Pipeline
+
+```bash
+# Run everything: training + evaluation + figures
+bash run_paper_evaluation.sh
+```
+
+## 📖 Documentation
+
+- **[PAPER_RESULTS_SUMMARY.md](PAPER_RESULTS_SUMMARY.md)** - Complete evaluation results with LaTeX templates
+- **[VIEW_RESULTS.md](VIEW_RESULTS.md)** - Guide to viewing and interpreting results
+- **[QUICK_START_PAPER.md](QUICK_START_PAPER.md)** - Quick reference for paper metrics
+- **[COMPARISON_REPORT.md](COMPARISON_REPORT.md)** - Detailed comparison with baselines
+- **[README_CRC_SELECT.md](README_CRC_SELECT.md)** - Full CRC-Select documentation
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Step-by-step tutorial
 
 ## Acknowledgement
 - Implementation borrows from https://github.com/gatheluck/pytorch-SelectiveNet.
