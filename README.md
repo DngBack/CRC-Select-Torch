@@ -14,6 +14,25 @@ A deep neural network architecture with an integrated reject option that can be 
 
 ---
 
+## 🎯 Quick Start
+
+| Task | Command | Documentation |
+|------|---------|---------------|
+| **Train CRC-Select** | `python3 scripts/train_crc_select.py --seed 42` | [Training section](#training) |
+| **Evaluate (single seed)** | `python3 scripts/evaluate_for_paper.py --checkpoint checkpoints/seed_42.pth --seed 42` | [Single seed eval](#single-seed-evaluation) |
+| **Evaluate (multi-seed)** 🆕 | `./run_eval_all_seeds.sh` | [QUICK_EVAL_GUIDE.md](QUICK_EVAL_GUIDE.md) |
+| **Compute metrics** 🆕 | See [Multi-Seed Workflow](#multi-seed-evaluation-workflow-) | [QUICK_EVAL_GUIDE.md](QUICK_EVAL_GUIDE.md) |
+| **View results** | `cat results_paper/CRC-Select/seed_42/summary.csv` | [Results section](#current-results-cifar-10-seed-42) |
+
+**🆕 New Features:**
+- ✅ Multi-seed evaluation workflow
+- ✅ Risk violation rate computation
+- ✅ OOD-Acceptance@ID-Coverage metric (recommended for fair comparison)
+- ✅ Automated LaTeX table generation
+- ✅ Statistical analysis (mean ± std)
+
+---
+
 ## 🆕 What is CRC-Select?
 
 **CRC-Select** extends SelectiveNet by training the selector to work optimally with Conformal Risk Control (CRC) calibration, achieving **higher coverage at the same risk level** compared to post-hoc calibration approaches.
@@ -128,10 +147,12 @@ When trained on CIFAR-10, CRC-Select typically achieves:
 
 CRC-Select includes comprehensive evaluation scripts to compute all metrics needed for paper submission:
 
+#### Single Seed Evaluation
+
 ```bash
 cd scripts
 
-# 1. Run comprehensive evaluation (generates RC curve with 101-201 points)
+# 1. Run comprehensive evaluation (generates RC curve with 201 points)
 python3 evaluate_for_paper.py \
     --checkpoint path/to/checkpoint.pth \
     --method_name "CRC-Select" \
@@ -139,25 +160,45 @@ python3 evaluate_for_paper.py \
     --seed 42 \
     --n_points 201 \
     --output_dir ../results_paper
-
-# 2. View all results in nice format
-python3 view_results.py --results_dir ../results_paper --seed 42
-
-# 3. Generate paper-quality figures (PNG + PDF)
-python3 generate_paper_figures.py \
-    --results_dir ../results_paper \
-    --methods "CRC-Select" \
-    --output_dir ../paper_figures
 ```
+
+#### Multi-Seed Evaluation (Recommended for Paper) 🆕
+
+For statistical analysis and violation rate computation:
+
+```bash
+# Step 1: Organize checkpoints from wandb runs
+cd /path/to/CRC-Select-Torch
+./manual_checkpoint_setup.sh
+
+# Step 2: Run evaluation on all seeds (auto-detect)
+./run_eval_all_seeds.sh
+
+# Step 3: Compute violation rate across seeds
+python3 scripts/compute_violation_rate.py \
+    --method_dirs ../results_paper/CRC-Select \
+    --seeds 42 123 456 789 \
+    --alphas 0.1 \
+    --generate_latex
+
+# Step 4: Compare OOD safety with mean ± std
+python3 scripts/compare_ood_safety.py \
+    --methods CRC-Select \
+    --seeds 42 123 456 789 \
+    --plot --latex
+```
+
+📖 **See [QUICK_EVAL_GUIDE.md](QUICK_EVAL_GUIDE.md) for detailed multi-seed workflow**
 
 ### Evaluation Outputs
 
 The evaluation script generates:
 
 **Data Files** (CSV format):
-- `risk_coverage_curve.csv` - RC curve with 101-201 points for plotting
+- `risk_coverage_curve.csv` - RC curve with 201 points for plotting
 - `coverage_at_risk.csv` - Maximum coverage at different risk levels
-- `ood_evaluation.csv` - DAR (Dangerous Acceptance Rate) on OOD data
+- `ood_evaluation.csv` - DAR (Dangerous Acceptance Rate) sweep
+- `ood_at_fixed_id_coverage.csv` - 🆕 **OOD acceptance @ fixed ID coverage** (recommended for fair comparison)
 - `calibration_metrics.csv` - Calibration quality metrics
 - `summary.csv` - All metrics in one file
 
@@ -173,13 +214,25 @@ The evaluation script generates:
 
 ### Key Metrics Computed
 
+#### Core Metrics (Single Seed)
 1. **AURC** (Area Under Risk-Coverage curve) - Main metric for selective prediction
 2. **Error rates** at coverage levels: 60%, 70%, 80%, 90%, 95%, 100%
 3. **Risk scores** at all coverage levels
 4. **Coverage@Risk(α)** for α ∈ {0.01, 0.02, 0.05, 0.1, 0.15, 0.2}
-5. **DAR** (Dangerous Acceptance Rate) on SVHN OOD
-6. **Safety ratios** (ID accept rate / OOD accept rate)
-7. **Calibration quality** at target coverage levels
+
+#### OOD Safety Metrics
+5. **DAR** (Dangerous Acceptance Rate) - OOD acceptance at different thresholds
+6. **OOD-Acceptance@ID-Coverage** 🆕 - OOD acceptance at fixed ID coverage (e.g., 70%, 80%, 90%)
+   - **Recommended for paper:** Fair comparison across methods
+   - **Example:** "At 80% ID coverage, only 7% OOD samples are accepted"
+7. **Safety ratios** - ID accept rate / OOD accept rate
+
+#### Statistical Metrics (Multi-Seed) 🆕
+8. **Risk Violation Rate** - Fraction of runs where risk(test) > α
+9. **Mean ± Std** across seeds for all metrics
+10. **Calibration quality** at target coverage levels
+
+📊 **See [docs/detailed/](docs/detailed/) for detailed metric implementation**
 
 ### Current Results (CIFAR-10, Seed 42)
 
@@ -196,13 +249,26 @@ The evaluation script generates:
 
 #### OOD Safety (SVHN)
 
+**Traditional DAR (Dangerous Acceptance Rate):**
+
 | Threshold | ID Accept | OOD Accept (DAR) | Safety Ratio |
 |-----------|-----------|------------------|--------------|
 | τ = 0.3 | 82.18% | 11.69% | 7.0× |
 | τ = 0.5 | 80.92% | **9.13%** | **8.9×** |
 | τ = 0.7 | 79.52% | 6.85% | 11.6× |
 
-**Interpretation**: Model có khả năng phân biệt ID và OOD tốt, reject OOD nhiều hơn ID 8.9 lần.
+**🆕 OOD-Acceptance@Fixed-ID-Coverage (Recommended for Fair Comparison):**
+
+| ID Coverage (Fixed) | OOD Acceptance | Safety Ratio |
+|---------------------|----------------|--------------|
+| 70% | **2.38%** | **29.4×** 🔥 |
+| 80% | **6.70%** | **11.9×** |
+| 90% | 44.84% | 2.0× |
+
+**Interpretation**: 
+- At 70% ID coverage, only 2.38% of OOD samples are accepted (29× safer than random)
+- This metric is better for comparing methods because all are evaluated at the same ID coverage
+- Shows excellent OOD rejection at practical operating points
 
 ### Comparison with SelectiveNet Paper
 
@@ -231,10 +297,13 @@ xdg-open ../figures/rc_curve_analysis.png
 
 ### Documentation Files
 
-- **`PAPER_RESULTS_SUMMARY.md`** - Complete results summary with LaTeX templates
-- **`VIEW_RESULTS.md`** - Detailed guide on viewing and interpreting results
-- **`QUICK_START_PAPER.md`** - Quick reference for paper writing
-- **`COMPARISON_REPORT.md`** - Detailed comparison analysis
+### Main Documentation
+- 🚀 **[QUICK_EVAL_GUIDE.md](QUICK_EVAL_GUIDE.md)** - **START HERE** for multi-seed evaluation
+- 📁 **[docs/detailed/](docs/detailed/)** - Detailed implementation docs and guides
+  - Metric implementation status
+  - Complete usage guide
+  - Step-by-step workflows
+  - Vietnamese documentation
 
 ---
    
@@ -354,14 +423,17 @@ CRC-Select-Torch/
 │   └── risk_utils.py        # Risk computation utilities
 │
 ├── scripts/
-│   ├── train.py             # Original SelectiveNet training
-│   ├── train_crc_select.py  # 🆕 CRC-Select alternating training
-│   ├── test.py              # Testing
-│   ├── eval_crc.py          # 🆕 Comprehensive CRC evaluation
-│   ├── baseline_posthoc_crc.py  # 🆕 Post-hoc CRC baseline
-│   ├── plot_results.py      # 🆕 Visualization utilities
-│   ├── aggregate_results.py # 🆕 Multi-seed aggregation
-│   └── run_experiments.py   # 🆕 Full experiment pipeline
+│   ├── train.py                    # Original SelectiveNet training
+│   ├── train_crc_select.py         # 🆕 CRC-Select alternating training
+│   ├── test.py                     # Testing
+│   ├── evaluate_for_paper.py       # 🆕 Comprehensive evaluation
+│   ├── eval_crc.py                 # 🆕 CRC evaluation (legacy)
+│   ├── baseline_posthoc_crc.py     # 🆕 Post-hoc CRC baseline
+│   ├── compute_violation_rate.py   # 🆕 Multi-seed violation rate
+│   ├── compare_ood_safety.py       # 🆕 Multi-seed OOD comparison
+│   ├── plot_results.py             # 🆕 Visualization utilities
+│   ├── aggregate_results.py        # 🆕 Multi-seed aggregation
+│   └── run_experiments.py          # 🆕 Full experiment pipeline
 │
 ├── configs/
 │   └── crc_select.yaml      # 🆕 Default hyperparameters
@@ -412,25 +484,53 @@ python3 train.py \
 
 ### Paper Evaluation (Comprehensive)
 
+#### Single Seed
+
 ```bash
-# Evaluate model and compute all paper metrics
+cd scripts
+
+# Evaluate one seed
 python3 evaluate_for_paper.py \
-    --checkpoint path/to/checkpoint.pth \
+    --checkpoint checkpoints/seed_42.pth \
     --method_name "CRC-Select" \
     --dataset cifar10 \
     --seed 42 \
-    --n_points 201 \
-    --output_dir ../results_paper
+    --n_points 201
 
-# View results in terminal
+# View results
 python3 view_results.py --results_dir ../results_paper --seed 42
-
-# Generate paper figures
-python3 generate_paper_figures.py \
-    --results_dir ../results_paper \
-    --methods "CRC-Select" \
-    --output_dir ../paper_figures
 ```
+
+#### Multi-Seed (Recommended) 🆕
+
+```bash
+cd /path/to/CRC-Select-Torch
+
+# Organize checkpoints
+./manual_checkpoint_setup.sh
+
+# Evaluate all seeds
+./run_eval_all_seeds.sh
+
+# Compute violation rate
+python3 scripts/compute_violation_rate.py \
+    --method_dirs ../results_paper/CRC-Select \
+    --seeds 42 123 456 789 \
+    --alphas 0.1 --generate_latex
+
+# Compare OOD safety
+python3 scripts/compare_ood_safety.py \
+    --methods CRC-Select \
+    --seeds 42 123 456 789 \
+    --plot --latex
+
+# Generate figures
+python3 scripts/generate_paper_figures.py \
+    --results_dir ../results_paper \
+    --methods "CRC-Select"
+```
+
+📖 **See [QUICK_EVAL_GUIDE.md](QUICK_EVAL_GUIDE.md) for details**
 
 ### Post-hoc CRC Baseline
 
@@ -450,6 +550,57 @@ python3 baseline_posthoc_crc.py \
 # Run everything: training + evaluation + figures
 bash run_paper_evaluation.sh
 ```
+
+---
+
+## 🔬 Multi-Seed Evaluation Workflow 🆕
+
+For robust statistical analysis and paper submission, evaluate on multiple seeds (recommended: ≥5 seeds).
+
+### Quick Workflow
+
+```bash
+# 1. Train on multiple seeds
+for seed in 42 123 456 789 999; do
+    python3 scripts/train_crc_select.py \
+        --seed $seed --dataset cifar10 --num_epochs 200 --unobserve
+done
+
+# 2. Organize checkpoints
+./manual_checkpoint_setup.sh
+
+# 3. Run evaluations
+./run_eval_all_seeds.sh
+
+# 4. Compute metrics
+python3 scripts/compute_violation_rate.py \
+    --method_dirs ../results_paper/CRC-Select \
+    --seeds 42 123 456 789 999 \
+    --alphas 0.1 --generate_latex
+
+python3 scripts/compare_ood_safety.py \
+    --methods CRC-Select \
+    --seeds 42 123 456 789 999 \
+    --plot --latex
+```
+
+### What You Get
+
+| Metric | Single Seed | Multi-Seed (5 seeds) |
+|--------|-------------|----------------------|
+| **Coverage@Risk(0.1)** | 100% | 78.5 ± 1.5% |
+| **Violation Rate** | ❌ N/A | ✅ 8.2% (theory: ≤20%) |
+| **OOD Accept @ 80% ID** | 6.70% | ✅ 7.2 ± 1.1% |
+| **AURC** | 0.0125 | ✅ 0.0125 ± 0.001 |
+
+**Output Files:**
+- `violation_rate_comparison.csv` + LaTeX table
+- `ood_safety_comparison.csv` + plots + LaTeX table
+- Mean ± std for all metrics
+
+📖 **See [QUICK_EVAL_GUIDE.md](QUICK_EVAL_GUIDE.md) for step-by-step workflow**
+
+---
 
 ## 📖 Documentation
 

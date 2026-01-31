@@ -198,6 +198,66 @@ class CRCEvaluator:
         
         return pd.DataFrame(results)
     
+    def compute_ood_acceptance_at_fixed_id_coverage(
+        self,
+        id_loader: DataLoader,
+        ood_loader: DataLoader,
+        target_id_coverages: List[float] = [0.7, 0.8, 0.9]
+    ) -> pd.DataFrame:
+        """
+        Compute OOD acceptance rate at fixed ID coverage levels.
+        
+        This is the recommended metric for fair comparison across methods:
+        - Fix ID coverage (e.g., 70%, 80%, 90%)
+        - Measure OOD acceptance at that coverage
+        - Lower OOD acceptance = better OOD safety
+        
+        This metric is superior to sweeping threshold because:
+        1. Fair comparison: all methods evaluated at same ID coverage
+        2. Practical: coverage is often the constraint in deployment
+        3. Clear interpretation: "at 80% ID coverage, how much OOD leaks through?"
+        
+        Args:
+            id_loader: DataLoader for ID (in-distribution) data
+            ood_loader: DataLoader for OOD (out-of-distribution) data
+            target_id_coverages: List of target ID coverage levels
+        
+        Returns:
+            DataFrame with columns:
+            - id_coverage_target: Target ID coverage
+            - threshold: Threshold τ that achieves target ID coverage
+            - id_coverage_actual: Actual ID coverage at τ
+            - ood_accept_rate: OOD acceptance rate at τ (DAR)
+            - safety_ratio: ID accept / OOD accept (higher is better)
+        """
+        # Collect predictions
+        _, id_g, _ = self.collect_predictions(id_loader)
+        _, ood_g, _ = self.collect_predictions(ood_loader)
+        
+        results = []
+        for target_cov in target_id_coverages:
+            # Find threshold that gives desired ID coverage
+            # Use quantile: to get 70% coverage, reject bottom 30%
+            tau = torch.quantile(id_g, 1.0 - target_cov).item()
+            
+            # Measure actual ID and OOD acceptance at this tau
+            id_accept = (id_g >= tau).float().mean().item()
+            ood_accept = (ood_g >= tau).float().mean().item()
+            
+            # Safety ratio: how much more ID than OOD is accepted
+            safety_ratio = id_accept / (ood_accept + 1e-8)
+            
+            results.append({
+                'id_coverage_target': target_cov,
+                'threshold': tau,
+                'id_coverage_actual': id_accept,
+                'ood_accept_rate': ood_accept,
+                'dar': ood_accept,  # Same as ood_accept_rate
+                'safety_ratio': safety_ratio
+            })
+        
+        return pd.DataFrame(results)
+    
     def evaluate_mixture(
         self,
         id_loader: DataLoader,

@@ -222,6 +222,56 @@ class PaperEvaluator:
             })
         
         return pd.DataFrame(results)
+    
+    def compute_ood_acceptance_at_fixed_id_coverage(
+        self,
+        id_loader,
+        ood_loader,
+        target_id_coverages=[0.6, 0.7, 0.8, 0.9]
+    ):
+        """
+        Compute OOD acceptance rate at fixed ID coverage levels.
+        
+        This is the recommended metric for fair comparison across methods.
+        
+        Args:
+            id_loader: DataLoader for ID data
+            ood_loader: DataLoader for OOD data
+            target_id_coverages: List of target ID coverage levels
+        
+        Returns:
+            DataFrame with OOD acceptance at fixed ID coverage
+        """
+        # Collect predictions
+        print("  Collecting ID predictions...")
+        _, id_g, _ = self.collect_predictions(id_loader)
+        
+        print("  Collecting OOD predictions...")
+        _, ood_g, _ = self.collect_predictions(ood_loader)
+        
+        results = []
+        for target_cov in target_id_coverages:
+            # Find threshold that gives desired ID coverage
+            # Use quantile: to get 70% coverage, reject bottom 30%
+            tau = torch.quantile(id_g, 1.0 - target_cov).item()
+            
+            # Measure actual ID and OOD acceptance at this tau
+            id_accept = (id_g >= tau).float().mean().item()
+            ood_accept = (ood_g >= tau).float().mean().item()
+            
+            # Safety ratio: how much more ID than OOD is accepted
+            safety_ratio = id_accept / (ood_accept + 1e-8)
+            
+            results.append({
+                'id_coverage_target': target_cov,
+                'threshold': tau,
+                'id_coverage_actual': id_accept,
+                'ood_accept_rate': ood_accept,
+                'dar': ood_accept,  # Same as ood_accept_rate
+                'safety_ratio': safety_ratio
+            })
+        
+        return pd.DataFrame(results)
 
 
 def load_model(checkpoint_path, args):
@@ -312,6 +362,7 @@ def main(args):
         )
         print(f"  ✓ OOD samples: {len(ood_loader.dataset)}")
         
+        # Original OOD evaluation (sweep thresholds)
         ood_thresholds = np.linspace(0.0, 1.0, 51)
         ood_df = evaluator.evaluate_ood(test_loader, ood_loader, ood_thresholds)
         
@@ -326,6 +377,24 @@ def main(args):
             dar = ood_df.iloc[idx]['dar']
             id_acc = ood_df.iloc[idx]['id_accept_rate']
             print(f"    τ={tau:.1f}: DAR={dar:.4f}, ID accept={id_acc:.4f}")
+        
+        # NEW: OOD acceptance at fixed ID coverage
+        print("\n  Computing OOD acceptance @ fixed ID coverage...")
+        ood_fixed_cov = evaluator.compute_ood_acceptance_at_fixed_id_coverage(
+            test_loader, ood_loader, 
+            target_id_coverages=[0.6, 0.7, 0.8, 0.9]
+        )
+        
+        ood_fixed_path = os.path.join(output_dir, 'ood_at_fixed_id_coverage.csv')
+        ood_fixed_cov.to_csv(ood_fixed_path, index=False)
+        print(f"  ✓ Saved to {ood_fixed_path}")
+        
+        # Print summary
+        print("\n  OOD Acceptance @ Fixed ID Coverage:")
+        for _, row in ood_fixed_cov.iterrows():
+            print(f"    ID={row['id_coverage_target']*100:.0f}%: "
+                  f"OOD={row['ood_accept_rate']*100:.2f}%, "
+                  f"Safety={row['safety_ratio']:.1f}×")
     
     # Calibration metrics
     print("\n[7/7] Computing calibration metrics...")
