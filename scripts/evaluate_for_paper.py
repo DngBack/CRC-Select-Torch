@@ -281,7 +281,18 @@ def load_model(checkpoint_path, args):
     model = SelectiveNet(features, args.dim_features, 10, div_by_ten=False).cuda()
     
     checkpoint = torch.load(checkpoint_path, weights_only=False)
-    model.load_state_dict(checkpoint['state_dict'])
+    
+    # Handle different checkpoint formats
+    if isinstance(checkpoint, list):
+        # Vanilla checkpoint is saved as [final, best_val, best_val_tf]
+        # Use the first one (final epoch)
+        checkpoint = checkpoint[0]
+    
+    if 'state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['state_dict'])
+    else:
+        model.load_state_dict(checkpoint)
+    
     model.eval()
     
     return model, dataset_builder

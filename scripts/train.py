@@ -20,6 +20,7 @@ from selectivenet.model import SelectiveNet
 from selectivenet.loss import SelectiveLoss
 from selectivenet.data import DatasetBuilder
 from selectivenet.evaluator import Evaluator
+from selectivenet.reproducibility import set_seed
 
 import wandb
 WANDB_PROJECT_NAME="selective_net"
@@ -27,13 +28,19 @@ if "--unobserve" in sys.argv:
     os.environ["WANDB_MODE"] = "dryrun"
 
 def main(args):
-    wandb.init(project=WANDB_PROJECT_NAME, tags=["pytorch"])
+    # Set random seed for reproducibility
+    set_seed(args.seed)
+    wandb.init(project=WANDB_PROJECT_NAME, tags=["vanilla", "pytorch"], config=vars(args))
     train(args)
 
 def train(args):
     wandb.config.update(args)
 
     log_path = wandb.run.dir
+    
+    # Create checkpoint directory for evaluation
+    checkpoint_dir = "checkpoints/vanilla"
+    os.makedirs(checkpoint_dir, exist_ok=True)
     
     # dataset
     dataset_builder = DatasetBuilder(name=args.dataset, root_path=args.dataroot)
@@ -147,12 +154,23 @@ def train(args):
     checkpoint_dict = [{'state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()},
                         save_dict_pytorch, 
                         save_dict]
-    checkpoint_path = os.path.join(log_path, 'checkpoints')
-    save_checkpoint(checkpoint_dict, checkpoint_path)
+    
+    # Save to wandb directory
+    wandb_checkpoint_path = os.path.join(log_path, 'checkpoints')
+    save_checkpoint(checkpoint_dict, wandb_checkpoint_path)
+    print(f"✓ Checkpoints saved to wandb: {wandb_checkpoint_path}")
+    
+    # Save to main checkpoint directory for evaluation
+    if hasattr(args, 'seed'):
+        eval_checkpoint_path = f"checkpoints/vanilla/seed_{args.seed}.pth"
+        torch.save(checkpoint_dict, eval_checkpoint_path)
+        print(f"✓ Checkpoint saved for evaluation: {eval_checkpoint_path}")
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
+    # reproducibility
+    parser.add_argument('--seed', type=int, default=42, help='random seed for reproducibility')
     # model
     parser.add_argument('--dim_features', type=int, default=512)
     parser.add_argument('--dropout_prob', type=float, default=0.3)

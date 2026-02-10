@@ -52,6 +52,10 @@ def train_crc_select(args):
     wandb.config.update(args)
     log_path = wandb.run.dir
     
+    # Create checkpoint directory for evaluation
+    checkpoint_dir = "checkpoints/CRC-Select"
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
     print("=" * 80)
     print("CRC-Select Training")
     print("=" * 80)
@@ -290,10 +294,15 @@ def train_crc_select(args):
         best_model_state,      # Best validation checkpoint duplicate (index 2)
     ]
     
-    checkpoint_path = os.path.join(log_path, 'checkpoints')
-    save_checkpoint(checkpoint_dict, checkpoint_path)
+    # Save to wandb directory
+    wandb_checkpoint_path = os.path.join(log_path, 'checkpoints')
+    save_checkpoint(checkpoint_dict, wandb_checkpoint_path)
+    print(f"✓ Checkpoints saved to wandb: {wandb_checkpoint_path}")
     
-    print(f"✓ Checkpoints saved to {checkpoint_path}")
+    # Save to main checkpoint directory for evaluation
+    eval_checkpoint_path = f"checkpoints/CRC-Select/seed_{args.seed}.pth"
+    torch.save(checkpoint_dict, eval_checkpoint_path)
+    print(f"✓ Checkpoint saved for evaluation: {eval_checkpoint_path}")
     print("=" * 80)
 
 

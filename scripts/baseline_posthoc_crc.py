@@ -42,6 +42,13 @@ def load_vanilla_selectivenet(checkpoint_path, args):
     
     # Load checkpoint
     checkpoint = torch.load(checkpoint_path)
+    
+    # Handle different checkpoint formats
+    if isinstance(checkpoint, list):
+        # Vanilla checkpoint is saved as [final, best_val, best_val_tf]
+        # Use the first one (final epoch)
+        checkpoint = checkpoint[0]
+    
     if 'state_dict' in checkpoint:
         model.load_state_dict(checkpoint['state_dict'])
     else:
@@ -125,21 +132,35 @@ def main(args):
     )
     test_coverage = compute_coverage(test_g, tau_calibrated)
     
-    # Compute accuracy
+    # Compute accuracy metrics
     test_preds = test_logits.argmax(dim=1)
     test_correct = (test_preds == test_targets).float()
-    acceptance_mask = (test_g >= tau_calibrated).float()
     
-    if acceptance_mask.sum() > 0:
-        test_selective_acc = (acceptance_mask * test_correct).sum() / acceptance_mask.sum()
+    # Overall accuracy (all samples)
+    test_acc = test_correct.mean()
+    
+    # Selective accuracy (only accepted samples)
+    acceptance_mask = (test_g >= tau_calibrated).float()
+    num_accepted = acceptance_mask.sum().item()
+    
+    if num_accepted > 0:
+        test_selective_acc = (acceptance_mask * test_correct).sum() / num_accepted
     else:
         test_selective_acc = torch.tensor(0.0)
     
+    # Error rate on accepted samples (should relate to risk)
+    if num_accepted > 0:
+        test_selective_err = 1.0 - test_selective_acc
+    else:
+        test_selective_err = torch.tensor(0.0)
+    
     print(f"\n  Test results (tau={tau_calibrated:.4f}):")
-    print(f"    Risk: {test_risk:.4f}")
-    print(f"    Coverage: {test_coverage:.4f}")
+    print(f"    Coverage: {test_coverage:.4f} ({int(num_accepted)}/{len(test_targets)} samples)")
+    print(f"    Selective risk: {test_risk:.4f}")
+    print(f"    Selective error: {test_selective_err:.4f}")
     print(f"    Selective accuracy: {test_selective_acc:.4f}")
-    print(f"    Risk violation: {'YES' if test_risk > args.alpha_risk else 'NO'} "
+    print(f"    Overall accuracy: {test_acc:.4f}")
+    print(f"    Risk violation: {'YES ⚠️ ' if test_risk > args.alpha_risk else 'NO ✓'} "
           f"(target: {args.alpha_risk:.4f})")
     
     # ==================== Generate Full Evaluation ====================
@@ -174,6 +195,8 @@ def main(args):
         'test_coverage': test_coverage.item(),
         'test_risk': test_risk.item(),
         'test_selective_acc': test_selective_acc.item(),
+        'test_selective_err': test_selective_err.item(),
+        'test_overall_acc': test_acc.item(),
         'risk_violation': test_risk.item() > args.alpha_risk
     }
     
@@ -198,10 +221,15 @@ def main(args):
     print("=" * 80)
     print(f"Method: Post-hoc CRC (2-stage)")
     print(f"Calibrated on: {calib_result['num_accepted']} cal samples")
-    print(f"\nTest Performance:")
-    print(f"  Coverage: {test_coverage:.3f}")
-    print(f"  Risk: {test_risk:.3f} (target: {args.alpha_risk:.3f})")
+    print(f"\nCalibration Set:")
+    print(f"  Coverage: {calib_result['actual_coverage']:.3f}")
+    print(f"  Risk: {calib_result['estimated_risk']:.3f}")
+    print(f"\nTest Set Performance:")
+    print(f"  Coverage: {test_coverage:.3f} ({int(num_accepted)}/{len(test_targets)})")
+    print(f"  Selective Risk: {test_risk:.3f} (target: {args.alpha_risk:.3f})")
+    print(f"  Selective Error: {test_selective_err:.3f}")
     print(f"  Selective Accuracy: {test_selective_acc:.3f}")
+    print(f"  Overall Accuracy: {test_acc:.3f}")
     print(f"  Risk Violation: {'YES ⚠️' if test_risk > args.alpha_risk else 'NO ✓'}")
     print("=" * 80)
     
@@ -221,6 +249,8 @@ if __name__ == '__main__':
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
     parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--ood_dataset', type=str, default='svhn',
+                       help='OOD dataset for evaluation (for compatibility with eval script)')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('-j', '--num_workers', type=int, default=8)

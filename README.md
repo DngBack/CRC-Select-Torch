@@ -627,3 +627,5 @@ python3 scripts/compare_ood_safety.py \
 
 [1]: https://arxiv.org/abs/1901.09192
 [2]: https://github.com/geifmany/selectivenet
+
+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
