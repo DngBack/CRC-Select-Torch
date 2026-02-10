@@ -209,3 +209,4 @@ __marimo__/
 data/*
 scripts/wandb/*
 checkpoints/*
+wandb/*

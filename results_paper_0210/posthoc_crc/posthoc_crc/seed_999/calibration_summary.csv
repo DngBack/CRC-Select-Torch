@@ -1,0 +1,2 @@
+method,seed,alpha_risk,tau_init,tau_calibrated,q_crc,cal_coverage,cal_risk,test_coverage,test_risk,test_selective_acc,test_selective_err,test_overall_acc,risk_violation
+posthoc_crc,999,0.1,0.5,0.5,0.1,0.9958,0.0013558840146288276,0.9972000122070312,0.0013536096084862947,1.0,0.0,1.0,False

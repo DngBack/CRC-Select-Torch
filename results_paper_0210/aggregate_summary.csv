@@ -1,0 +1,16 @@
+method,metric,seed_123,seed_456,seed_999,mean,std
+CRC-Select,aurc,0.013501,0.012229,0.014017,0.0133,0.0009
+CRC-Select,coverage_at_risk_0.02,0.8278,0.8424,0.8250,0.832,0.009
+CRC-Select,coverage_at_risk_0.05,0.8848,0.8828,0.8744,0.881,0.005
+CRC-Select,coverage_at_risk_0.10,1.0,1.0,1.0,1.0,0.0
+CRC-Select,error_at_cov_0.70,0.0129,0.0113,0.0135,0.0126,0.0011
+CRC-Select,error_at_cov_0.80,0.0152,0.0140,0.0162,0.0151,0.0011
+CRC-Select,error_at_cov_0.90,0.0296,0.0281,0.0290,0.0289,0.0008
+CRC-Select,ood_accept_at_id70,0.899,0.814,1.394,1.03,0.30
+CRC-Select,ood_accept_at_id80,7.35,2.70,3.38,4.48,2.52
+CRC-Select,ood_accept_at_id90,47.66,16.85,22.96,29.16,15.79
+vanilla,aurc,0.0,0.0,0.0,0.0,0.0
+vanilla,coverage_at_risk_0.10,1.0,1.0,1.0,1.0,0.0
+vanilla,ood_accept_at_id70,0.545,0.181,0.795,0.51,
+vanilla,ood_accept_at_id80,0.845,0.469,1.083,0.80,
+vanilla,ood_accept_at_id90,1.606,1.149,1.813,1.52,
