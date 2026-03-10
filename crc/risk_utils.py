@@ -3,6 +3,12 @@ Risk computation utilities for CRC-Select.
 
 Implements bounded risk r(x,y) = 1 - p_theta(y|x) for use in CRC.
 This is a monotone loss in [0,1] suitable for conformal risk control.
+
+Key distinction (from paper):
+  - Accepted-loss mass: A(tau) = (1/n) * sum( r_i * 1{g_i >= tau} )
+    This is what CRC certifies (Theorem 1).
+  - Conditional selective risk: R_sel(tau) = A(tau) / C(tau)
+    This is a descriptive metric, NOT directly certified.
 """
 import torch
 import torch.nn.functional as F
@@ -104,6 +110,71 @@ def compute_selective_risk(
     return selective_risk
 
 
+def compute_accepted_loss_mass(
+    logits: torch.Tensor,
+    selection_scores: torch.Tensor,
+    targets: torch.Tensor,
+    threshold: float = 0.5,
+    eps: float = 1e-8,
+    hard: bool = True
+) -> torch.Tensor:
+    """
+    Compute accepted-loss mass: A(tau) = (1/n) * sum( r_i * 1{g_i >= tau} ).
+    
+    This is the quantity CERTIFIED by CRC (Theorem 1 in the paper).
+    It is NOT the same as conditional selective risk R_sel = A / C.
+    
+    Args:
+        logits: Model output logits (B, num_classes)
+        selection_scores: Selector output g(x) (B,) or (B, 1)
+        targets: Ground truth labels (B,)
+        threshold: Acceptance threshold tau
+        eps: Not used (kept for API consistency)
+        hard: If True, use hard thresholding; if False, soft weighting
+    
+    Returns:
+        accepted_loss_mass: Scalar A(tau)
+    """
+    r = compute_risk_scores(logits, targets)
+    g = selection_scores.squeeze()
+    
+    if hard:
+        g_weight = (g >= threshold).float()
+    else:
+        g_weight = g
+    
+    # A(tau) = mean(r_i * indicator)  -- NOT ratio, but mean over ALL samples
+    accepted_loss_mass = (g_weight * r).mean()
+    return accepted_loss_mass
+
+
+def compute_crc_loss_per_sample(
+    logits: torch.Tensor,
+    selection_scores: torch.Tensor,
+    targets: torch.Tensor,
+    threshold: float
+) -> torch.Tensor:
+    """
+    Compute per-sample CRC loss: L_i(tau) = r_i * 1{g_i >= tau}.
+    
+    These are the losses used in the CRC calibration procedure.
+    Each L_i(tau) is nonincreasing in tau and bounded in [0, 1].
+    
+    Args:
+        logits: Model output logits (B, num_classes)
+        selection_scores: Selector output g(x) (B,) or (B, 1)
+        targets: Ground truth labels (B,)
+        threshold: Acceptance threshold tau
+    
+    Returns:
+        crc_losses: Per-sample CRC losses (B,)
+    """
+    r = compute_risk_scores(logits, targets)
+    g = selection_scores.squeeze()
+    acceptance = (g >= threshold).float()
+    return r * acceptance
+
+
 def compute_coverage(
     selection_scores: torch.Tensor,
     threshold: float
@@ -201,6 +272,44 @@ def compute_risk_coverage_curve(
         coverages.append(coverage.item())
     
     return np.array(risks), np.array(coverages)
+
+
+def compute_error_detection_auroc_aupr(
+    logits: torch.Tensor,
+    selection_scores: torch.Tensor,
+    targets: torch.Tensor
+) -> dict:
+    """
+    Compute AUROC and AUPR for error detection.
+    
+    Treats 'prediction is wrong' as positive class.
+    Uses -g(x) as the anomaly score (lower g = more likely error).
+    
+    Args:
+        logits: Model logits (N, num_classes)
+        selection_scores: Selector scores g(x) (N,) or (N,1)
+        targets: Ground truth labels (N,)
+    
+    Returns:
+        dict with auroc and aupr
+    """
+    from sklearn.metrics import roc_auc_score, average_precision_score
+    
+    preds = logits.argmax(dim=1)
+    is_error = (preds != targets).float().numpy()
+    
+    g = selection_scores.squeeze().numpy()
+    # Use -g as score: low g should predict error
+    anomaly_score = -g
+    
+    # Handle edge cases: all correct or all wrong
+    if is_error.sum() == 0 or is_error.sum() == len(is_error):
+        return {'auroc': float('nan'), 'aupr': float('nan')}
+    
+    auroc = roc_auc_score(is_error, anomaly_score)
+    aupr = average_precision_score(is_error, anomaly_score)
+    
+    return {'auroc': auroc, 'aupr': aupr}
 
 
 if __name__ == '__main__':

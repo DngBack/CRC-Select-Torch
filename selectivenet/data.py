@@ -8,14 +8,17 @@ from collections import namedtuple
 
 import torch
 import torchvision
+import numpy as np
 
 class DatasetBuilder(object):
     # tuple for dataset config
     DC = namedtuple('DatasetConfig', ['mean', 'std', 'input_size', 'num_classes'])
     
     DATASET_CONFIG = {
-        'svhn' :   DC([0.43768210, 0.44376970, 0.47280442], [0.19803012, 0.20101562, 0.19703614], 32, 10),
-        'cifar10': DC([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784], 32, 10),
+        'svhn':       DC([0.43768210, 0.44376970, 0.47280442], [0.19803012, 0.20101562, 0.19703614], 32, 10),
+        'cifar10':    DC([0.49139968, 0.48215841, 0.44653091], [0.24703223, 0.24348513, 0.26158784], 32, 10),
+        'cifar100':   DC([0.50707516, 0.48654887, 0.44091784], [0.26733429, 0.25643846, 0.27615047], 32, 100),
+        'tinyimagenet': DC([0.4802, 0.4481, 0.3975], [0.2770, 0.2691, 0.2821], 64, 200),
     } 
 
     def __init__(self, name:str, root_path:str):
@@ -36,8 +39,12 @@ class DatasetBuilder(object):
             dataset = torchvision.datasets.SVHN(root=self.root_path, split='train' if train else 'test', transform=transform, download=True)
         elif self.name == 'cifar10':
             dataset = torchvision.datasets.CIFAR10(root=self.root_path, train=train, transform=transform, download=True)
+        elif self.name == 'cifar100':
+            dataset = torchvision.datasets.CIFAR100(root=self.root_path, train=train, transform=transform, download=True)
+        elif self.name == 'tinyimagenet':
+            dataset = self._get_tinyimagenet(train, transform)
         else: 
-            raise NotImplementedError 
+            raise NotImplementedError(f'Dataset {self.name} not implemented')
 
         return dataset
 
@@ -94,8 +101,10 @@ class DatasetBuilder(object):
         """
         Get DataLoader for OOD dataset.
         
+        Supports: svhn, cifar10, cifar100, cifar10c, cifar100c
+        
         Args:
-            ood_name: Name of OOD dataset (e.g., 'svhn')
+            ood_name: Name of OOD dataset (e.g., 'svhn', 'cifar10c')
             batch_size: Batch size for DataLoader
             normalize_to_id: If True, normalize OOD using ID dataset statistics
             num_workers: Number of workers for DataLoader
@@ -104,8 +113,15 @@ class DatasetBuilder(object):
         Returns:
             DataLoader for OOD dataset
         """
+        # Handle corruption datasets
+        if ood_name in ('cifar10c', 'cifar100c'):
+            return self._get_corruption_loader(
+                ood_name, batch_size, normalize_to_id, num_workers, pin_memory
+            )
+        
         if ood_name not in self.DATASET_CONFIG.keys():
-            raise ValueError(f'OOD dataset {ood_name} is not supported')
+            raise ValueError(f'OOD dataset {ood_name} is not supported. '
+                           f'Available: {list(self.DATASET_CONFIG.keys())} + cifar10c, cifar100c')
         
         # Get normalization stats - use ID dataset if requested
         norm_name = self.name if normalize_to_id else ood_name
@@ -127,10 +143,15 @@ class DatasetBuilder(object):
             ood_dataset = torchvision.datasets.CIFAR10(
                 root=ood_root, train=False, transform=transform, download=True
             )
+        elif ood_name == 'cifar100':
+            ood_dataset = torchvision.datasets.CIFAR100(
+                root=ood_root, train=False, transform=transform, download=True
+            )
+        elif ood_name == 'tinyimagenet':
+            ood_dataset = self._get_tinyimagenet(train=False, transform=transform)
         else:
             raise NotImplementedError(f'OOD dataset {ood_name} not implemented')
         
-        # Create DataLoader
         ood_loader = torch.utils.data.DataLoader(
             ood_dataset,
             batch_size=batch_size,
@@ -140,6 +161,84 @@ class DatasetBuilder(object):
         )
         
         return ood_loader
+    
+    def _get_tinyimagenet(self, train, transform):
+        """Load Tiny-ImageNet dataset from directory structure."""
+        split = 'train' if train else 'val'
+        data_dir = os.path.join(self.root_path, split)
+        if not os.path.exists(data_dir):
+            raise FileNotFoundError(
+                f"Tiny-ImageNet not found at {data_dir}. "
+                f"Download from http://cs231n.stanford.edu/tiny-imagenet-200.zip "
+                f"and extract to {self.root_path}"
+            )
+        return torchvision.datasets.ImageFolder(data_dir, transform=transform)
+    
+    def _get_corruption_loader(
+        self,
+        corruption_name: str,
+        batch_size: int,
+        normalize_to_id: bool = True,
+        num_workers: int = 8,
+        pin_memory: bool = True,
+        severity: int = 3,
+        corruption_type: str = 'gaussian_noise'
+    ):
+        """
+        Load CIFAR-10-C or CIFAR-100-C corruption datasets.
+        
+        Expected format: numpy files at {dataroot}/CIFAR-10-C/ or CIFAR-100-C/
+        with files like: gaussian_noise.npy, labels.npy
+        
+        Download from: https://zenodo.org/record/2535967
+        """
+        if corruption_name == 'cifar10c':
+            base_name = 'cifar10'
+            c_dir = os.path.join(os.path.dirname(self.root_path), 'CIFAR-10-C')
+        elif corruption_name == 'cifar100c':
+            base_name = 'cifar100'
+            c_dir = os.path.join(os.path.dirname(self.root_path), 'CIFAR-100-C')
+        else:
+            raise ValueError(f"Unknown corruption dataset: {corruption_name}")
+        
+        data_path = os.path.join(c_dir, f'{corruption_type}.npy')
+        label_path = os.path.join(c_dir, 'labels.npy')
+        
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(
+                f"Corruption data not found at {data_path}. "
+                f"Download from https://zenodo.org/record/2535967"
+            )
+        
+        # Load data: shape (50000*5, 32, 32, 3) for all severities
+        images = np.load(data_path)
+        labels = np.load(label_path)
+        
+        # Select severity level (1-5), each has 10000 images
+        start_idx = (severity - 1) * 10000
+        end_idx = severity * 10000
+        images = images[start_idx:end_idx]
+        labels = labels[start_idx:end_idx]
+        
+        # Normalize using ID stats
+        norm_name = self.name if normalize_to_id else base_name
+        config = self.DATASET_CONFIG.get(norm_name, self.DATASET_CONFIG[base_name])
+        
+        transform = torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize(mean=config.mean, std=config.std),
+        ])
+        
+        dataset = CorruptionDataset(images, labels, transform=transform)
+        
+        loader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=pin_memory
+        )
+        return loader
 
     def _get_mean_and_std(self):
         """
@@ -154,4 +253,30 @@ class DatasetBuilder(object):
         else: 
             raise NotImplementedError 
         return mean, std
+
+
+class CorruptionDataset(torch.utils.data.Dataset):
+    """Dataset wrapper for CIFAR-C style corruption numpy files."""
+    
+    def __init__(self, images, labels, transform=None):
+        """
+        Args:
+            images: numpy array of shape (N, H, W, 3), uint8
+            labels: numpy array of shape (N,)
+            transform: torchvision transform
+        """
+        self.images = images
+        self.labels = labels.astype(np.int64)
+        self.transform = transform
+    
+    def __len__(self):
+        return len(self.labels)
+    
+    def __getitem__(self, idx):
+        from PIL import Image
+        img = Image.fromarray(self.images[idx])
+        label = self.labels[idx]
+        if self.transform is not None:
+            img = self.transform(img)
+        return img, label
             

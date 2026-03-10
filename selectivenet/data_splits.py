@@ -22,9 +22,9 @@ def set_seed(seed: int):
 def create_splits(
     dataset_size: int,
     seed: int,
-    train_ratio: float = 0.8,
+    train_ratio: float = 0.7,
     cal_ratio: float = 0.1,
-    test_ratio: float = 0.1
+    test_ratio: float = 0.2
 ) -> Tuple[List[int], List[int], List[int]]:
     """
     Create fixed 3-way splits for train/cal/test.
@@ -32,9 +32,9 @@ def create_splits(
     Args:
         dataset_size: Total number of samples in dataset
         seed: Random seed for reproducibility
-        train_ratio: Proportion of data for training (default: 0.8)
+        train_ratio: Proportion of data for training (default: 0.7)
         cal_ratio: Proportion of data for calibration (default: 0.1)
-        test_ratio: Proportion of data for test (default: 0.1)
+        test_ratio: Proportion of data for test (default: 0.2)
     
     Returns:
         train_indices, cal_indices, test_indices
@@ -141,9 +141,9 @@ def create_and_save_splits(
     dataset,
     dataset_name: str,
     seed: int,
-    train_ratio: float = 0.8,
+    train_ratio: float = 0.7,
     cal_ratio: float = 0.1,
-    test_ratio: float = 0.1,
+    test_ratio: float = 0.2,
     save_dir: str = 'data/splits'
 ) -> Tuple[List[int], List[int], List[int]]:
     """

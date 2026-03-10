@@ -26,8 +26,9 @@ from selectivenet.data import DatasetBuilder
 from selectivenet.data_splits import get_split_loaders
 from selectivenet.evaluator import Evaluator
 from selectivenet.reproducibility import set_seed
+from selectivenet.resnet_variant import get_backbone
 
-from crc.calibrate import compute_crc_threshold
+from crc.calibrate import compute_crc_threshold, crc_calibrate_threshold
 
 import wandb
 WANDB_PROJECT_NAME = "crc_selective_net"
@@ -88,9 +89,17 @@ def train_crc_select(args):
     print(f"  Test batches: {len(test_loader)}")
     
     # ==================== Model ====================
-    features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).cuda()
+    backbone = getattr(args, 'backbone', 'vgg16')
+    if backbone == 'vgg16':
+        features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).cuda()
+        dim_features = args.dim_features
+    else:
+        features, dim_features = get_backbone(
+            backbone, dataset_builder.input_size, args.dropout_prob
+        )
+        features = features.cuda()
     model = SelectiveNet(
-        features, args.dim_features, dataset_builder.num_classes, 
+        features, dim_features, dataset_builder.num_classes,
         div_by_ten=args.div_by_ten
     ).cuda()
     
@@ -155,26 +164,26 @@ def train_crc_select(args):
                 )
             
             q = calib_result['q']
-            R_cal = calib_result['estimated_risk']
+            A_cal = calib_result['accepted_loss_mass']
             coverage_cal = calib_result['actual_coverage']
             
             print(f"[Calibration] Results:")
             print(f"  q (threshold): {q:.4f}")
-            print(f"  Risk on cal: {R_cal:.4f}")
+            print(f"  Accepted-loss mass on cal: {A_cal:.4f}")
             print(f"  Coverage on cal: {coverage_cal:.4f}")
             print(f"  Accepted: {calib_result['num_accepted']}/{calib_result['num_total']}")
             
-            # Update mu using dual ascent
+            # Update mu using dual ascent (based on accepted-loss mass)
             if args.use_dual_update:
                 old_mu = crc_loss_fn.get_mu()
-                crc_loss_fn.update_mu(R_cal, args.alpha_risk, args.dual_lr)
+                crc_loss_fn.update_mu(A_cal, args.alpha_risk, args.dual_lr)
                 new_mu = crc_loss_fn.get_mu()
                 print(f"[Dual Update] mu: {old_mu:.4f} -> {new_mu:.4f}")
             
             # Log calibration results
             wandb.log({
                 'q': q,
-                'R_cal': R_cal,
+                'A_cal': A_cal,
                 'coverage_cal': coverage_cal,
                 'mu': crc_loss_fn.get_mu(),
                 'epoch': epoch
@@ -272,16 +281,42 @@ def train_crc_select(args):
         
         scheduler.step()
     
-    # ==================== Save Checkpoints ====================
+    # ==================== Final CRC Calibration ====================
     print("\n" + "=" * 80)
-    print("Training completed. Saving checkpoints...")
+    print("Running final CRC calibration on cal set (frozen model)...")
+    model.eval()
+    with torch.no_grad():
+        all_logits, all_g, all_t = [], [], []
+        for x, t in cal_loader:
+            x, t = x.cuda(), t.cuda()
+            logits, g, _ = model(x)
+            all_logits.append(logits.cpu())
+            all_g.append(g.cpu())
+            all_t.append(t.cpu())
+        cal_logits = torch.cat(all_logits)
+        cal_g = torch.cat(all_g).squeeze()
+        cal_targets = torch.cat(all_t)
+
+        final_crc = crc_calibrate_threshold(
+            cal_logits, cal_g, cal_targets, args.alpha_risk
+        )
+    tau_hat = final_crc['tau_hat']
+    print(f"  tau_hat: {tau_hat:.6f}")
+    print(f"  Accepted-loss mass at tau_hat: {final_crc['accepted_loss_mass']:.6f}")
+    print(f"  Coverage at tau_hat: {final_crc['coverage']:.4f}")
+    wandb.log({'final_tau_hat': tau_hat, **final_crc})
+
+    # ==================== Save Checkpoints ====================
+    print("\nSaving checkpoints...")
     
     # Prepare final checkpoint
     final_checkpoint = {
         'state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         'final_q': q,
-        'final_mu': crc_loss_fn.get_mu()
+        'final_mu': crc_loss_fn.get_mu(),
+        'tau_hat': tau_hat,
+        'crc_calibration': final_crc,
     }
     
     # Use best_model_state if available, otherwise use final
@@ -314,6 +349,9 @@ if __name__ == '__main__':
     parser.add_argument('--dropout_prob', type=float, default=0.3)
     parser.add_argument('--div_by_ten', action='store_true', 
                        help='divide by 10 when calculating g')
+    parser.add_argument('--backbone', type=str, default='vgg16',
+                       choices=['vgg16', 'resnet18', 'wrn28_10'],
+                       help='backbone architecture')
     
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')

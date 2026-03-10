@@ -1,8 +1,8 @@
 """
-Compute risk violation rate across multiple seeds.
+Compute accepted-loss mass violation rate across multiple seeds.
 
-A violation occurs when risk(test) > alpha at the calibrated threshold.
-This is a key metric for evaluating conformal risk control guarantees.
+A violation occurs when A_hat(test) > alpha at the CRC-calibrated threshold.
+This is the key metric for evaluating conformal risk control guarantees.
 
 Usage:
     python compute_violation_rate.py \
@@ -48,37 +48,46 @@ def compute_violation_rate_for_method(
     
     for seed in seeds:
         seed_dir = os.path.join(method_dir, f'seed_{seed}')
-        cov_at_risk_path = os.path.join(seed_dir, 'coverage_at_risk.csv')
+        # Prefer all_metrics.csv (new format) over coverage_at_risk.csv (legacy)
+        metrics_path = os.path.join(seed_dir, 'all_metrics.csv')
+        legacy_path = os.path.join(seed_dir, 'coverage_at_risk.csv')
         
-        if not os.path.exists(cov_at_risk_path):
-            print(f"  ⚠️  Missing results for seed {seed}")
+        df = None
+        if os.path.exists(metrics_path):
+            df = pd.read_csv(metrics_path)
+        elif os.path.exists(legacy_path):
+            df = pd.read_csv(legacy_path)
+        else:
+            print(f"  Missing results for seed {seed}")
             missing_seeds.append(seed)
             continue
         
-        # Load results
-        df = pd.read_csv(cov_at_risk_path)
-        
         # Find row for target alpha
-        alpha_rows = df[df['alpha'] == alpha]
+        alpha_rows = df[df['alpha'].round(3) == round(alpha, 3)]
         if len(alpha_rows) == 0:
-            print(f"  ⚠️  No results for alpha={alpha} in seed {seed}")
+            print(f"  No results for alpha={alpha} in seed {seed}")
             continue
         
         row = alpha_rows.iloc[0]
         
-        # Check violation with margin
+        # Use accepted_loss_mass for CRC violation check (primary)
+        # Fall back to risk for legacy results
+        alm = row.get('test_accepted_loss_mass',
+                       row.get('accepted_loss_mass',
+                               row.get('risk', float('nan'))))
+        cov = row.get('test_coverage', row.get('coverage', 0.0))
+        
         threshold = alpha * (1.0 + margin)
-        violated = row['risk'] > threshold
+        violated = alm > threshold
         
         results.append({
             'seed': seed,
             'alpha': alpha,
-            'risk': row['risk'],
-            'coverage': row['coverage'],
-            'threshold_tau': row['threshold'],
+            'accepted_loss_mass': alm,
+            'coverage': cov,
             'feasible': row.get('feasible', True),
             'violated': violated,
-            'risk_excess': max(0, row['risk'] - alpha)
+            'violation_gap': max(0, alm - alpha),
         })
     
     if len(results) == 0:
@@ -86,8 +95,9 @@ def compute_violation_rate_for_method(
     
     # Compute statistics
     violations = [r['violated'] for r in results]
-    risks = [r['risk'] for r in results]
+    alms = [r['accepted_loss_mass'] for r in results]
     coverages = [r['coverage'] for r in results]
+    gaps = [r['violation_gap'] for r in results]
     
     violation_rate = np.mean(violations)
     num_violations = np.sum(violations)
@@ -100,10 +110,11 @@ def compute_violation_rate_for_method(
         'num_violations': int(num_violations),
         'num_seeds': len(results),
         'num_missing': len(missing_seeds),
-        'mean_risk': np.mean(risks),
-        'std_risk': np.std(risks),
-        'min_risk': np.min(risks),
-        'max_risk': np.max(risks),
+        'mean_accepted_loss_mass': np.mean(alms),
+        'std_accepted_loss_mass': np.std(alms),
+        'min_accepted_loss_mass': np.min(alms),
+        'max_accepted_loss_mass': np.max(alms),
+        'mean_violation_gap': np.mean(gaps),
         'mean_coverage': np.mean(coverages),
         'std_coverage': np.std(coverages),
         'results_per_seed': results
@@ -112,7 +123,7 @@ def compute_violation_rate_for_method(
 
 def main(args):
     print("=" * 80)
-    print("Computing Risk Violation Rate Across Seeds")
+    print("Computing Accepted-Loss Mass Violation Rate Across Seeds")
     print("=" * 80)
     print(f"Seeds: {args.seeds}")
     print(f"Alpha values: {args.alphas}")
@@ -143,7 +154,8 @@ def main(args):
             # Print summary
             print(f"    Violation rate: {result['violation_rate']*100:.1f}% "
                   f"({result['num_violations']}/{result['num_seeds']})")
-            print(f"    Mean risk: {result['mean_risk']:.4f} ± {result['std_risk']:.4f}")
+            print(f"    Mean A(tau): {result['mean_accepted_loss_mass']:.4f} ± {result['std_accepted_loss_mass']:.4f}")
+            print(f"    Mean violation gap: {result['mean_violation_gap']:.4f}")
             print(f"    Mean coverage: {result['mean_coverage']:.4f} ± {result['std_coverage']:.4f}")
             
             if result['num_missing'] > 0:
@@ -169,8 +181,9 @@ def main(args):
                 'violation_rate': result['violation_rate'],
                 'num_violations': result['num_violations'],
                 'num_seeds': result['num_seeds'],
-                'mean_risk': result['mean_risk'],
-                'std_risk': result['std_risk'],
+                'mean_accepted_loss_mass': result['mean_accepted_loss_mass'],
+                'std_accepted_loss_mass': result['std_accepted_loss_mass'],
+                'mean_violation_gap': result['mean_violation_gap'],
                 'mean_coverage': result['mean_coverage'],
                 'std_coverage': result['std_coverage']
             }])
@@ -199,8 +212,9 @@ def main(args):
                 'violation_rate': result['violation_rate'],
                 'num_violations': result['num_violations'],
                 'num_seeds': result['num_seeds'],
-                'mean_risk': result['mean_risk'],
-                'std_risk': result['std_risk'],
+                'mean_accepted_loss_mass': result['mean_accepted_loss_mass'],
+                'std_accepted_loss_mass': result['std_accepted_loss_mass'],
+                'mean_violation_gap': result['mean_violation_gap'],
                 'mean_coverage': result['mean_coverage'],
                 'std_coverage': result['std_coverage']
             })
@@ -213,7 +227,7 @@ def main(args):
     
     # 3. Print comparison table
     print("\n" + "=" * 80)
-    print("Comparison Table: Risk Violation Rates")
+    print("Comparison Table: Accepted-Loss Mass Violation Rates")
     print("=" * 80)
     print(comparison_df.to_string(index=False))
     
@@ -227,7 +241,7 @@ def main(args):
         pivot_df = comparison_df.pivot(
             index='method',
             columns='alpha',
-            values=['violation_rate', 'mean_risk', 'mean_coverage']
+            values=['violation_rate', 'mean_accepted_loss_mass', 'mean_coverage']
         )
         
         latex_str = "\\begin{tabular}{l" + "c" * len(args.alphas) * 3 + "}\n"
@@ -242,7 +256,7 @@ def main(args):
         latex_str += ""
         
         for alpha in args.alphas:
-            latex_str += " & Viol. & Risk & Cov."
+            latex_str += " & Viol. & $\\hat A$ & Cov."
         latex_str += " \\\\\n"
         latex_str += "\\midrule\n"
         
@@ -253,9 +267,9 @@ def main(args):
                                    (comparison_df['alpha'] == alpha)]
                 if len(row) > 0:
                     viol_rate = row['violation_rate'].values[0]
-                    mean_risk = row['mean_risk'].values[0]
+                    mean_alm = row['mean_accepted_loss_mass'].values[0]
                     mean_cov = row['mean_coverage'].values[0]
-                    latex_str += f" & {viol_rate*100:.1f}\\% & {mean_risk:.3f} & {mean_cov:.3f}"
+                    latex_str += f" & {viol_rate*100:.1f}\\% & {mean_alm:.3f} & {mean_cov:.3f}"
                 else:
                     latex_str += " & - & - & -"
             latex_str += " \\\\\n"
@@ -279,10 +293,9 @@ def main(args):
         print(f"\n{method_name}:")
         for alpha, result in method_results.items():
             vr = result['violation_rate'] * 100
-            target = alpha
             status = "✅" if vr <= 20 else "⚠️" if vr <= 30 else "❌"
             print(f"  α={alpha:.2f}: {vr:.1f}% violations "
-                  f"(risk: {result['mean_risk']:.4f}±{result['std_risk']:.4f}) {status}")
+                  f"(A(tau): {result['mean_accepted_loss_mass']:.4f}±{result['std_accepted_loss_mass']:.4f}) {status}")
     
     print("\n" + "=" * 80)
     print(f"✓ All results saved to {args.output_dir}")
@@ -290,7 +303,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='Compute risk violation rate across seeds')
+    parser = ArgumentParser(description='Compute accepted-loss mass violation rate across seeds')
     
     parser.add_argument('--method_dirs', type=str, nargs='+', required=True,
                        help='directories containing results for each method')

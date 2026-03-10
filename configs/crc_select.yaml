@@ -1,51 +1,110 @@
 # CRC-Select Configuration File
-# This file contains default hyperparameters for CRC-Select experiments
+# Default hyperparameters for CRC-Select experiments.
+# See docs/crc_select_corrected_mini_paper.md for the theory.
 
+# ===================== Model =====================
 model:
-  dim_features: 512
+  backbone: vgg16            # options: vgg16, resnet18, wrn28_10
+  dim_features: 512          # auto-set by backbone factory
   dropout_prob: 0.3
   div_by_ten: false
 
+# ===================== Data =====================
 data:
-  dataset: cifar10
+  dataset: cifar10           # options: cifar10, cifar100, tinyimagenet
   dataroot: ../data
   batch_size: 128
   num_workers: 8
   normalize: true
-  augmentation: original  # options: original, tf, lili
+  augmentation: original     # options: original, tf, lili
+  # Data split ratios (train / cal / test)
+  split_ratios: [0.70, 0.10, 0.20]
 
-# CRC-Select specific parameters
+# ===================== CRC-Select =====================
 crc_select:
-  alpha_risk: 0.1           # Target risk level (e.g., 0.1 for 10% risk)
-  tau: 0.5                  # Acceptance threshold for selector g(x)
-  warmup_epochs: 20         # Number of warmup epochs without CRC penalty
-  recalibrate_every: 5      # Recalibrate q every N epochs
-  mu_init: 1.0              # Initial value for risk penalty multiplier
-  dual_lr: 0.01             # Learning rate for dual update of mu
-  delta: 0.1                # Failure probability for CRC bound
-  use_dual_update: true     # Whether to use dual ascent to update mu
+  alpha_risk: 0.1            # Target accepted-loss mass level
+  tau: 0.5                   # Initial acceptance threshold
+  warmup_epochs: 20          # Warm-up epochs before CRC penalty
+  recalibrate_every: 5       # Recalibrate CRC threshold every N epochs
+  mu_init: 1.0               # Initial risk penalty multiplier
+  dual_lr: 0.01              # Learning rate for dual ascent of mu
+  delta: 0.1                 # Failure probability for concentration bounds
+  use_dual_update: true      # Use dual ascent to update mu
+  loss_variant: hinge        # options: hinge (max(0, A-alpha)), squared ((A-alpha)^2)
 
-# Training parameters
+# ===================== Training =====================
 training:
   num_epochs: 200
-  lr: 0.1                   # Initial learning rate
-  wd: 0.0005                # Weight decay
+  lr: 0.1
+  wd: 0.0005
   momentum: 0.9
   nesterov: false
-  scheduler_step: 25        # Step size for learning rate scheduler
-  scheduler_gamma: 0.5      # Gamma for learning rate scheduler
+  scheduler_step: 25
+  scheduler_gamma: 0.5
 
-# SelectiveNet loss parameters
+# ===================== SelectiveNet loss =====================
 selective_loss:
-  coverage: 0.8             # Target coverage
-  alpha: 0.5                # Mix weight between selective_loss and ce_loss
-  lm: 32.0                  # Lagrange multiplier for coverage constraint
+  coverage: 0.8              # Target soft coverage
+  alpha: 0.5                 # Mix weight (selective_loss vs ce_loss)
+  lm: 32.0                   # Lagrange multiplier for coverage constraint
 
-# Evaluation parameters
+# ===================== Evaluation =====================
 evaluation:
-  taus: [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8]
-  alphas: [0.05, 0.1, 0.15, 0.2]
-  ood_dataset: svhn
+  taus: [0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9]
+  alphas: [0.01, 0.05, 0.10, 0.15, 0.20, 0.30]
+  ood_datasets: [svhn, cifar10c, cifar100c]
   ood_mixtures: [0.1, 0.3, 0.5]
-  seeds: [42, 123, 456]     # Random seeds for reproducibility
+  seeds: [42, 123, 456, 789, 999]   # 5 seeds for reliable statistics
+
+# ===================== Baselines =====================
+baselines:
+  - msp                      # Maximum Softmax Probability
+  - temp_scaled              # Temperature-scaled MSP
+  - selectivenet             # SelectiveNet (vanilla, no CRC)
+  - deep_gambler             # Deep Gambler (Ziyin et al., NeurIPS 2019)
+  - energy                   # Energy-based (Liu et al., NeurIPS 2020)
+  - posthoc_crc              # Post-hoc CRC on fixed selector
+  # - scrc                   # Selective Conformal RC (if implementation available)
+  # - lr_selective            # Logistic-regression selective (if available)
+
+# ===================== Ablations =====================
+ablations:
+  A1_lambda_risk:
+    param: mu_init
+    values: [0.1, 0.5, 1.0, 2.0, 5.0]
+  A2_cal_fraction:
+    param: cal_frac
+    values: [0.05, 0.10, 0.15, 0.20, 0.30]
+  A3_warmup:
+    param: warmup_epochs
+    values: [0, 10, 20, 40, 80]
+  A4_recal_freq:
+    param: recalibrate_every
+    values: [1, 5, 10, 20, 50]
+  A5_loss_variant:
+    param: loss_variant
+    values: [hinge, squared]
+  A6_backbone:
+    param: backbone
+    values: [vgg16, resnet18, wrn28_10]
+  A7_alpha_grid:
+    param: alpha_risk
+    values: [0.01, 0.05, 0.10, 0.15, 0.20, 0.30]
+
+# ===================== Datasets =====================
+datasets:
+  cifar10:
+    num_classes: 10
+    input_size: 32
+    ood_pair: svhn
+    corruption: cifar10c
+  cifar100:
+    num_classes: 100
+    input_size: 32
+    ood_pair: svhn
+    corruption: cifar100c
+  tinyimagenet:
+    num_classes: 200
+    input_size: 64
+    ood_pair: svhn
 

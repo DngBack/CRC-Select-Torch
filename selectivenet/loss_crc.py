@@ -1,8 +1,12 @@
 """
 CRC-aware loss function for CRC-Select training.
 
-Extends SelectiveLoss with CRC-coupled risk penalty to train selector
-that works well with CRC calibration.
+Extends SelectiveLoss with CRC-coupled accepted-loss-mass penalty to train
+selector that works well with CRC calibration.
+
+Key: The risk penalty matches the CRC-certified quantity:
+  L_risk = max(0, A_hat_mb - alpha)
+  where A_hat_mb = (1/m) * sum(g_i * r_i)  -- accepted-loss mass, NOT ratio
 """
 import os
 import sys
@@ -111,22 +115,23 @@ class CRCSelectiveLoss(torch.nn.Module):
         ) ** 2
         L_cov = penalty
         
-        # ================== Component 3: CRC-Coupled Risk Penalty ==================
-        # L_risk = max(0, R_hat - alpha_risk)
-        # where R_hat = sum(g * r) / sum(g) with r = 1 - p(y|x)
+        # ================== Component 3: CRC-Coupled Accepted-Loss Penalty ==================
+        # L_risk = max(0, A_hat_mb - alpha_risk)
+        # where A_hat_mb = (1/m) * sum(g_i * r_i) -- ACCEPTED-LOSS MASS (mean, not ratio)
+        # This matches the quantity certified by CRC (Theorem 1)
         
         if mode == 'train' and self.mu > 0:
             # Compute risk scores
             r = compute_risk_scores(prediction_out, target)
             
-            # Compute selective risk (soft weighting)
-            R_hat = (g * r).sum() / (g.sum() + self.eps)
+            # Accepted-loss mass (mean over all samples, NOT ratio)
+            A_hat_mb = (g * r).mean()
             
             # Risk penalty
-            L_risk = torch.relu(R_hat - alpha_risk)
+            L_risk = torch.relu(A_hat_mb - alpha_risk)
         else:
             L_risk = torch.tensor(0.0, device=g.device)
-            R_hat = torch.tensor(0.0, device=g.device)
+            A_hat_mb = torch.tensor(0.0, device=g.device)
         
         # ================== Component 4: Auxiliary Loss ==================
         # Standard CE on auxiliary classifier (no gating)
@@ -183,24 +188,24 @@ class CRCSelectiveLoss(torch.nn.Module):
             f'{pref}selective_acc': selective_acc.detach().cpu().item(),
             f'{pref}raw_acc': raw_acc.detach().cpu().item(),
             f'{pref}selective_risk': selective_risk_hard.detach().cpu().item(),
-            f'{pref}R_hat': R_hat.detach().cpu().item() if isinstance(R_hat, torch.Tensor) else 0.0,
+            f'{pref}accepted_loss_mass': A_hat_mb.detach().cpu().item() if isinstance(A_hat_mb, torch.Tensor) else 0.0,
             f'{pref}mu': self.mu,
             f'{pref}alpha_risk': alpha_risk,
         }
         
         return loss_dict
     
-    def update_mu(self, R_cal: float, alpha_risk: float, dual_lr: float = 0.01):
+    def update_mu(self, A_cal: float, alpha_risk: float, dual_lr: float = 0.01):
         """
         Update Lagrange multiplier mu using dual ascent.
         
         Args:
-            R_cal: Empirical risk on calibration set
+            A_cal: Empirical accepted-loss mass on calibration set
             alpha_risk: Target risk level
             dual_lr: Learning rate for dual update
         """
-        # Dual update: mu <- max(0, mu + eta * (R_cal - alpha))
-        self.mu = max(0.0, self.mu + dual_lr * (R_cal - alpha_risk))
+        # Dual update: mu <- max(0, mu + eta * (A_cal - alpha))
+        self.mu = max(0.0, self.mu + dual_lr * (A_cal - alpha_risk))
     
     def set_mu(self, mu: float):
         """Set mu directly."""

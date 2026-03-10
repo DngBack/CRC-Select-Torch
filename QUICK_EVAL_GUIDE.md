@@ -1,195 +1,210 @@
 # Quick Evaluation Guide
 
-Bạn đã train models trên nhiều seeds. Đây là cách eval nhanh nhất:
-
-## 🚀 Quick Start (3 Commands)
-
-```bash
-cd /home/admin1/Desktop/CRC-Select-Torch
-
-# 1. Setup checkpoints (chọn y khi được hỏi)
-./manual_checkpoint_setup.sh
-
-# 2. Run all evaluations
-./run_eval_all_seeds.sh
-
-# 3. Compute metrics
-python3 scripts/compute_violation_rate.py \
-    --method_dirs ../results_paper/CRC-Select \
-    --seeds 42 123 456 789 \
-    --alphas 0.1 --generate_latex
-
-python3 scripts/compare_ood_safety.py \
-    --methods CRC-Select \
-    --seeds 42 123 456 789 \
-    --plot --latex
-```
-
-**Thời gian:** ~15-20 phút total
+Hướng dẫn chạy đánh giá CRC-Select nhanh nhất — từ training đến figures cho paper.
 
 ---
 
-## 📊 What You'll Get
+## 1. Training (5 seeds)
 
-### Files Created:
+```bash
+cd /path/to/CRC-Select-Torch
+
+for seed in 42 123 456 789 999; do
+    python scripts/train_crc_select.py \
+        --dataset cifar10 \
+        --seed $seed \
+        --num_epochs 200 \
+        --alpha_risk 0.1 \
+        --backbone vgg16 \
+        --warmup_epochs 20 \
+        --recalibrate_every 5 \
+        --use_dual_update \
+        --unobserve
+done
+```
+
+Kết quả checkpoint lưu tại `results/CRC-Select/seed_<s>/`.
+
+---
+
+## 2. Evaluation (tất cả methods)
+
+### CRC-Select
+
+```bash
+for seed in 42 123 456 789 999; do
+    python scripts/evaluate_for_paper.py \
+        --checkpoint_dir results/CRC-Select/seed_$seed \
+        --dataset cifar10 \
+        --backbone vgg16
+done
+```
+
+### Baselines
+
+```bash
+for seed in 42 123 456 789 999; do
+    python scripts/baseline_msp.py          --dataset cifar10 --seed $seed
+    python scripts/baseline_temp_scaled.py   --dataset cifar10 --seed $seed
+    python scripts/baseline_posthoc_crc.py   --checkpoint_dir results/CRC-Select/seed_$seed --dataset cifar10
+    python scripts/baseline_deep_gambler.py  --dataset cifar10 --seed $seed
+    python scripts/baseline_energy.py        --dataset cifar10 --seed $seed
+done
+```
+
+---
+
+## 3. Analysis
+
+### Violation rate (accepted-loss mass)
+
+```bash
+python scripts/compute_violation_rate.py \
+    --method_dirs results/CRC-Select results/posthoc_crc results/msp \
+        results/temp_scaled results/deep_gambler results/energy \
+    --seeds 42 123 456 789 999 \
+    --alphas 0.05 0.1 0.15 0.2 \
+    --generate_latex \
+    -o results/violation_rate
+```
+
+### Aggregate mean ± std
+
+```bash
+python scripts/aggregate_results.py \
+    --method_dirs results/CRC-Select results/posthoc_crc results/msp \
+        results/temp_scaled results/deep_gambler results/energy \
+    --seeds 42 123 456 789 999 \
+    -o results/aggregated
+```
+
+---
+
+## 4. Figures & Tables
+
+```bash
+python scripts/generate_paper_figures.py \
+    --results_dir results \
+    --methods CRC-Select posthoc_crc msp temp_scaled deep_gambler energy \
+    --seeds 42 123 456 789 999 \
+    --output_dir figures
+```
+
+Output:
+- `figure2_rc_frontier.pdf` — Accepted-loss mass + selective risk vs coverage
+- `figure3_coverage_at_alpha.pdf` — Grouped bars per α
+- `figure4_violation_gap.pdf` — Box plot across seeds
+- `figure5_ood_dar.pdf` — OOD acceptance at fixed ID coverage
+- `figure7_threshold_efficiency.pdf` — Conservativeness & coverage efficiency
+- `table1_main_results.csv` / `.tex` — All metrics (mean ± std)
+- `table4_violation_rates.csv` / `.tex`
+
+---
+
+## 5. Ablations (optional)
+
+```bash
+# All 7 ablations at once
+python scripts/run_ablations.py --ablation all --dataset cifar10 \
+    --seeds 42 123 456 789 999 --output_dir results/ablations
+
+# Or one at a time
+python scripts/run_ablations.py --ablation A1  # λ-risk sensitivity
+python scripts/run_ablations.py --ablation A6  # backbone comparison
+```
+
+---
+
+## Output Structure
 
 ```
-results_paper/CRC-Select/
-├── seed_42/
-│   ├── coverage_at_risk.csv
-│   ├── ood_at_fixed_id_coverage.csv  ← NEW!
-│   └── risk_coverage_curve.csv
-├── seed_123/
-├── seed_456/
-└── seed_789/
-
 results/
+├── CRC-Select/
+│   └── seed_42/
+│       ├── all_metrics.csv              ← Primary: all metrics per alpha
+│       ├── risk_coverage_curve.csv      ← RC curve data
+│       ├── coverage_at_risk.csv         ← Coverage after CRC calibration
+│       ├── calibration_metrics.csv      ← CRC calibration details
+│       └── summary.csv
+├── posthoc_crc/seed_42/...
+├── msp/seed_42/...
+├── temp_scaled/seed_42/...
+├── deep_gambler/seed_42/...
+├── energy/seed_42/...
+├── aggregated/
+│   ├── CRC-Select/
+│   │   ├── coverage_at_risk_aggregated.csv
+│   │   ├── risk_coverage_curve_aggregated.csv
+│   │   └── ood_results_aggregated.csv
+│   └── summary_table.csv
 ├── violation_rate/
-│   ├── violation_rate_comparison.csv  ← For paper Table 1
-│   └── violation_rate_table.tex       ← LaTeX
-└── ood_comparison/
-    ├── ood_safety_comparison.csv      ← For paper Table 2
-    ├── ood_comparison_plot.png        ← Figure
-    └── ood_comparison_table.tex       ← LaTeX
+│   ├── violation_rate_comparison.csv
+│   └── violation_rate_table.tex
+└── ablations/
+    ├── ablation_A1_lambda_risk_sensitivity/
+    └── ...
+
+figures/
+├── figure2_rc_frontier.pdf
+├── figure3_coverage_at_alpha.pdf
+├── ...
+├── table1_main_results.csv
+└── table1_main_results.tex
 ```
-
-### Metrics You Can Report:
-
-1. **Coverage@Risk (with std)**
-   - Mean ± std across 4 seeds
-   - "78.5 ± 1.5% coverage at α=0.1"
-
-2. **Risk Violation Rate**
-   - "8.2% of runs violate risk constraint"
-   - "(1/4 seeds had risk > 0.1)"
-
-3. **OOD Safety (with std)**
-   - "At 80% ID coverage: 7.2 ± 1.1% OOD acceptance"
-   - "Safety ratio: 11 ± 2×"
-
-4. **AURC**
-   - "0.0125 ± 0.001"
 
 ---
 
-## 🔍 Verify Results
+## Key Metrics
+
+| Metric | File column | Description |
+|--------|------------|-------------|
+| Accepted-loss mass $\hat A$ | `accepted_loss_mass` | CRC-certified quantity ≤ α |
+| Violation gap | `violation_gap` | max(0, Â − α) |
+| Coverage | `coverage` | Fraction accepted |
+| Selective risk | `selective_risk` | A/C (descriptive only) |
+| AUROC | `auroc` | Error detection quality |
+| AUPR | `aupr` | Error detection (imbalanced) |
+| RC-AUC | `rc_auc` | Area under risk-coverage curve |
+| Conservativeness | `conservativeness` | α − Â (slack) |
+| DAR | `dar` | OOD dangerous acceptance rate |
+
+---
+
+## Verify Results
 
 ```bash
-# Check all evaluations completed
-ls ../results_paper/CRC-Select/
+# Check all seeds evaluated
+ls results/CRC-Select/
 
-# View violation rate
-cat ../results/violation_rate/violation_rate_comparison.csv
+# Check all_metrics.csv for a seed
+cat results/CRC-Select/seed_42/all_metrics.csv
 
-# View OOD comparison
-cat ../results/ood_comparison/ood_safety_comparison.csv
+# Quick summary table
+cat results/aggregated/summary_table.csv
 
-# Check summary for each seed
-cat ../results_paper/CRC-Select/seed_*/summary.csv
+# Violation rate
+cat results/violation_rate/violation_rate_comparison.csv
 ```
 
 ---
 
-## ⚠️ Important Notes
+## Troubleshooting
 
-1. **Bạn có 4 seeds (42, 123, 456, 789), không phải 5**
-   - Đủ cho statistical analysis
-   - Violation rate vẫn tính được
-   - Paper recommended: ≥3 seeds
-
-2. **Nếu bạn muốn thêm seed 999:**
-   ```bash
-   # Train thêm
-   python3 scripts/train_crc_select.py --seed 999 --dataset cifar10
-   
-   # Copy checkpoint
-   cp scripts/wandb/latest-run/files/checkpoints/checkpoint_best_val.pth \
-      checkpoints/seed_999.pth
-   
-   # Eval
-   python3 scripts/evaluate_for_paper.py \
-       --checkpoint checkpoints/seed_999.pth --seed 999
-   
-   # Re-run analysis với seeds 42 123 456 789 999
-   ```
-
-3. **Seeds mapping (auto-detected từ timestamps):**
-   - Latest run (Jan 27) → seed_42
-   - Jan 26 13:54 → seed_123
-   - Jan 26 13:44 → seed_456
-   - Jan 26 09:52 → seed_789
-
----
-
-## 📝 For Paper Writing
-
-### Table 1: Main Results
-```
-Method      | Coverage@0.1  | Violation Rate | AURC
-CRC-Select  | 78.5 ± 1.5%   | 8.2%          | 0.0125 ± 0.001
-```
-
-### Table 2: OOD Safety
-```
-ID Coverage | OOD Accept (%)  | Safety Ratio
-70%         | 2.5 ± 0.3       | 28 ± 3×
-80%         | 7.2 ± 1.1       | 11 ± 2×
-90%         | 45.2 ± 5.2      | 2.0 ± 0.2×
-```
-
-*Note: Numbers above are examples - use actual values from your results*
-
----
-
-## 🆘 Troubleshooting
-
-### "No checkpoints found"
+### "No checkpoint found"
 ```bash
-# Check wandb runs
-ls -lh scripts/wandb/offline-run-*/files/checkpoints/
+# Check checkpoint directories
+ls results/CRC-Select/seed_*/
 
-# Run manual setup
-./manual_checkpoint_setup.sh
+# If using wandb, copy checkpoint manually
+cp scripts/wandb/offline-run-*/files/checkpoints/checkpoint_best_val.pth \
+   results/CRC-Select/seed_42/checkpoint.pth
 ```
 
-### "Evaluation failed for seed XXX"
+### "Missing alpha in all_metrics.csv"
+Evaluation uses `--alphas 0.05 0.1 0.15 0.2` by default. Check:
 ```bash
-# Check checkpoint
-ls -lh checkpoints/seed_XXX.pth
-
-# Try loading
-python3 -c "import torch; print(torch.load('checkpoints/seed_XXX.pth').keys())"
-
-# Re-copy if corrupted
-cp scripts/wandb/offline-run-XXXXX/files/checkpoints/checkpoint_best_val.pth \
-   checkpoints/seed_XXX.pth
+head results/CRC-Select/seed_42/all_metrics.csv
 ```
 
-### Missing OOD files
-```bash
-# OOD files should be created automatically
-# If missing, re-run evaluation:
-python3 scripts/evaluate_for_paper.py \
-    --checkpoint checkpoints/seed_XXX.pth \
-    --seed XXX
-```
-
----
-
-## 🎯 Success Checklist
-
-- [ ] Checkpoints organized (4 files in `checkpoints/`)
-- [ ] All evaluations completed (4 folders in `results_paper/CRC-Select/`)
-- [ ] Each folder has `ood_at_fixed_id_coverage.csv`
-- [ ] Violation rate computed
-- [ ] OOD comparison generated
-- [ ] LaTeX tables created
-
----
-
-## 📚 More Info
-
-- Detailed workflow: `EVAL_WORKFLOW.md`
-- Metric explanations: `METRICS_SUMMARY.md`
-- Implementation status: `METRIC_IMPLEMENTATION_STATUS.md`
-- Full guide: `METRIC_USAGE_GUIDE.md`
+### Memory issues with Tiny-ImageNet
+Reduce batch size: `--batch_size 64`

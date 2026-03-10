@@ -2,10 +2,16 @@
 Unified evaluator for CRC-Select experiments.
 
 Provides comprehensive evaluation including:
-- Risk-Coverage curves
-- Coverage@Risk(alpha)
+- Accepted-loss mass (CRC-certified quantity, Theorem 1)
+- Risk-Coverage curves (accepted-loss mass vs coverage)
+- Coverage@Risk (maximum coverage at given alpha)
+- Violation gap (A_hat - alpha)
+- Conditional selective risk (descriptive)
+- Selective accuracy
+- AUROC / AUPR for error detection
 - DAR (Dangerous Acceptance Rate) for OOD
-- Mixture evaluation (ID + OOD)
+- Risk-Coverage AUC
+- Threshold conservativeness
 """
 import os
 import sys
@@ -22,9 +28,12 @@ from torch.utils.data import DataLoader, ConcatDataset, Subset
 from crc.risk_utils import (
     compute_risk_scores,
     compute_selective_risk,
+    compute_accepted_loss_mass,
     compute_coverage,
-    compute_selective_accuracy
+    compute_selective_accuracy,
+    compute_error_detection_auroc_aupr,
 )
+from crc.calibrate import crc_calibrate_threshold
 
 
 class CRCEvaluator:
@@ -86,31 +95,42 @@ class CRCEvaluator:
         """
         Generate Risk-Coverage curve by sweeping threshold tau.
         
+        Includes both accepted-loss mass (audited) and conditional risk (descriptive).
+        
         Args:
             loader: DataLoader for the dataset
             taus: Array of threshold values to evaluate
         
         Returns:
-            DataFrame with columns: tau, risk, coverage, selective_acc
+            DataFrame with columns: tau, coverage, accepted_loss_mass, 
+                                   selective_risk, selective_acc, abstention_rate
         """
         logits, selection_scores, targets = self.collect_predictions(loader)
         
         results = []
         for tau in taus:
+            coverage = compute_coverage(selection_scores, tau)
             risk = compute_selective_risk(
                 logits, selection_scores, targets,
                 threshold=tau, hard=True
             )
-            coverage = compute_coverage(selection_scores, tau)
+            alm = compute_accepted_loss_mass(
+                logits, selection_scores, targets,
+                threshold=tau, hard=True
+            )
             sel_acc, _ = compute_selective_accuracy(
                 logits, selection_scores, targets, threshold=tau
             )
             
             results.append({
                 'tau': float(tau),
-                'risk': risk.item(),
                 'coverage': coverage.item(),
-                'selective_acc': sel_acc.item()
+                'accepted_loss_mass': alm.item(),
+                'selective_risk': risk.item(),
+                'selective_acc': sel_acc.item(),
+                'abstention_rate': 1.0 - coverage.item(),
+                # legacy alias
+                'risk': risk.item(),
             })
         
         return pd.DataFrame(results)
@@ -122,9 +142,10 @@ class CRCEvaluator:
         taus: np.ndarray
     ) -> Dict:
         """
-        Compute coverage at target risk level alpha.
+        Compute coverage at target risk level alpha using accepted-loss mass.
         
-        Finds the maximum coverage achievable while keeping risk <= alpha.
+        Finds the maximum coverage achievable while keeping A_hat <= alpha
+        (CRC guarantee) and also reports conditional risk.
         
         Args:
             loader: DataLoader for the dataset
@@ -132,19 +153,19 @@ class CRCEvaluator:
             taus: Array of threshold values to search over
         
         Returns:
-            Dictionary with tau, risk, coverage at target alpha
+            Dictionary with tau, accepted_loss_mass, coverage at target alpha
         """
         rc_curve = self.sweep_tau_risk_coverage(loader, taus)
         
-        # Find thresholds where risk <= alpha
-        valid_rows = rc_curve[rc_curve['risk'] <= alpha]
+        # CRC guarantee is on accepted_loss_mass, not conditional risk
+        valid_rows = rc_curve[rc_curve['accepted_loss_mass'] <= alpha]
         
         if len(valid_rows) == 0:
-            # No threshold achieves target risk
             return {
                 'alpha': alpha,
                 'tau': np.nan,
-                'risk': np.nan,
+                'accepted_loss_mass': np.nan,
+                'selective_risk': np.nan,
                 'coverage': 0.0,
                 'feasible': False
             }
@@ -155,7 +176,8 @@ class CRCEvaluator:
         return {
             'alpha': alpha,
             'tau': best_row['tau'],
-            'risk': best_row['risk'],
+            'accepted_loss_mass': best_row['accepted_loss_mass'],
+            'selective_risk': best_row['selective_risk'],
             'coverage': best_row['coverage'],
             'feasible': True
         }
@@ -348,7 +370,8 @@ class CRCEvaluator:
         """
         Evaluate violation rate across multiple datasets/splits.
         
-        A violation occurs when risk > alpha.
+        A violation occurs when accepted_loss_mass > alpha (CRC guarantee).
+        Also tracks conditional risk for descriptive purposes.
         
         Args:
             loaders: List of DataLoaders (e.g., from different seeds)
@@ -358,40 +381,242 @@ class CRCEvaluator:
         Returns:
             Dictionary with violation statistics
         """
+        alms = []
         risks = []
         coverages = []
         
         for loader in loaders:
             logits, selection_scores, targets = self.collect_predictions(loader)
             
+            alm = compute_accepted_loss_mass(
+                logits, selection_scores, targets,
+                threshold=tau, hard=True
+            ).item()
             risk = compute_selective_risk(
                 logits, selection_scores, targets,
                 threshold=tau, hard=True
             ).item()
             coverage = compute_coverage(selection_scores, tau).item()
             
+            alms.append(alm)
             risks.append(risk)
             coverages.append(coverage)
         
+        alms = np.array(alms)
         risks = np.array(risks)
         coverages = np.array(coverages)
         
-        violations = risks > alpha
+        # CRC guarantee is on accepted_loss_mass
+        violations = alms > alpha
         violation_rate = violations.mean()
+        violation_gaps = np.maximum(alms - alpha, 0.0)
         
         return {
             'alpha': alpha,
             'tau': tau,
             'violation_rate': violation_rate,
-            'num_violations': violations.sum(),
+            'num_violations': int(violations.sum()),
             'num_trials': len(loaders),
+            'mean_accepted_loss_mass': alms.mean(),
+            'std_accepted_loss_mass': alms.std(),
+            'mean_violation_gap': violation_gaps.mean(),
+            'max_violation_gap': violation_gaps.max(),
             'mean_risk': risks.mean(),
             'std_risk': risks.std(),
             'mean_coverage': coverages.mean(),
             'std_coverage': coverages.std(),
+            'accepted_loss_masses': alms.tolist(),
             'risks': risks.tolist(),
             'coverages': coverages.tolist()
         }
+
+    # ------------------------------------------------------------------
+    # New comprehensive evaluation methods
+    # ------------------------------------------------------------------
+
+    def evaluate_with_crc_calibration(
+        self,
+        cal_loader: DataLoader,
+        test_loader: DataLoader,
+        alpha: float,
+    ) -> Dict:
+        """
+        Full CRC evaluation: calibrate on cal set, evaluate on test set.
+
+        Uses the correct CRC formula:
+            hat_tau = inf{tau : (n/(n+1)) * A_hat_n(tau) + 1/(n+1) <= alpha}
+
+        Args:
+            cal_loader: Calibration data loader
+            test_loader: Test data loader
+            alpha: Target risk level
+
+        Returns:
+            Dictionary with calibrated threshold and all metrics on test set
+        """
+        # --- calibrate on calibration set ---
+        cal_logits, cal_g, cal_targets = self.collect_predictions(cal_loader)
+        cal_result = crc_calibrate_threshold(
+            cal_logits, cal_g, cal_targets, alpha
+        )
+        tau_hat = cal_result['tau_hat']
+
+        # --- evaluate on test set ---
+        test_logits, test_g, test_targets = self.collect_predictions(test_loader)
+
+        alm = compute_accepted_loss_mass(
+            test_logits, test_g, test_targets, threshold=tau_hat, hard=True
+        ).item()
+        risk = compute_selective_risk(
+            test_logits, test_g, test_targets, threshold=tau_hat, hard=True
+        ).item()
+        cov = compute_coverage(test_g, tau_hat).item()
+        sel_acc, _ = compute_selective_accuracy(
+            test_logits, test_g, test_targets, threshold=tau_hat
+        )
+        sel_acc = sel_acc.item()
+
+        # Violation gap
+        violation_gap = max(alm - alpha, 0.0)
+
+        # AUROC / AUPR for error detection
+        auroc, aupr = compute_error_detection_auroc_aupr(
+            test_logits, test_g, test_targets
+        )
+
+        return {
+            'alpha': alpha,
+            'tau_hat': tau_hat,
+            'cal_accepted_loss_mass': cal_result['accepted_loss_mass'],
+            'test_accepted_loss_mass': alm,
+            'test_selective_risk': risk,
+            'test_coverage': cov,
+            'test_selective_acc': sel_acc,
+            'test_abstention_rate': 1.0 - cov,
+            'violation_gap': violation_gap,
+            'violated': alm > alpha,
+            'auroc': auroc,
+            'aupr': aupr,
+        }
+
+    def compute_rc_auc(
+        self,
+        loader: DataLoader,
+        num_points: int = 200,
+        use_accepted_loss_mass: bool = True,
+    ) -> float:
+        """
+        Area under the Risk-Coverage curve.
+
+        Args:
+            loader: DataLoader
+            num_points: Number of threshold points
+            use_accepted_loss_mass: If True, use accepted-loss mass on y-axis
+                                   (CRC-certified). Otherwise use conditional risk.
+
+        Returns:
+            AUC value (lower is better)
+        """
+        taus = np.linspace(0.0, 1.0, num_points)
+        rc = self.sweep_tau_risk_coverage(loader, taus)
+        rc = rc.sort_values('coverage')
+
+        y_col = 'accepted_loss_mass' if use_accepted_loss_mass else 'selective_risk'
+        auc = np.trapz(rc[y_col].values, rc['coverage'].values)
+        return float(auc)
+
+    def compute_threshold_conservativeness(
+        self,
+        cal_loader: DataLoader,
+        test_loader: DataLoader,
+        alpha: float,
+    ) -> Dict:
+        """
+        Measure how conservative the CRC threshold is.
+
+        conservativeness = alpha - A_hat_test (positive = under budget = conservative)
+        efficiency = coverage achieved / max possible coverage at alpha
+
+        Args:
+            cal_loader: Calibration data loader
+            test_loader: Test data loader
+            alpha: Target risk level
+
+        Returns:
+            Dictionary with conservativeness metrics
+        """
+        result = self.evaluate_with_crc_calibration(cal_loader, test_loader, alpha)
+        conservativeness = alpha - result['test_accepted_loss_mass']
+
+        # Oracle coverage: best possible coverage at alpha on test set
+        taus = np.linspace(0.0, 1.0, 500)
+        rc = self.sweep_tau_risk_coverage(test_loader, taus)
+        valid = rc[rc['accepted_loss_mass'] <= alpha]
+        oracle_coverage = valid['coverage'].max() if len(valid) > 0 else 0.0
+
+        efficiency = (result['test_coverage'] / oracle_coverage
+                      if oracle_coverage > 0 else 0.0)
+
+        return {
+            'alpha': alpha,
+            'tau_hat': result['tau_hat'],
+            'test_accepted_loss_mass': result['test_accepted_loss_mass'],
+            'conservativeness': conservativeness,
+            'test_coverage': result['test_coverage'],
+            'oracle_coverage': oracle_coverage,
+            'coverage_efficiency': efficiency,
+        }
+
+    def compute_all_metrics(
+        self,
+        cal_loader: DataLoader,
+        test_loader: DataLoader,
+        alpha: float,
+        ood_loader: Optional[DataLoader] = None,
+    ) -> Dict:
+        """
+        Compute every metric required by the paper in one call.
+
+        Returns a flat dictionary suitable for a single row of a results CSV.
+        """
+        # CRC calibration + core metrics
+        core = self.evaluate_with_crc_calibration(cal_loader, test_loader, alpha)
+
+        # RC-AUC (accepted-loss mass version)
+        rc_auc_alm = self.compute_rc_auc(test_loader, use_accepted_loss_mass=True)
+        rc_auc_risk = self.compute_rc_auc(test_loader, use_accepted_loss_mass=False)
+
+        # Threshold conservativeness
+        cons = self.compute_threshold_conservativeness(
+            cal_loader, test_loader, alpha
+        )
+
+        result = {
+            **core,
+            'rc_auc_alm': rc_auc_alm,
+            'rc_auc_risk': rc_auc_risk,
+            'conservativeness': cons['conservativeness'],
+            'oracle_coverage': cons['oracle_coverage'],
+            'coverage_efficiency': cons['coverage_efficiency'],
+        }
+
+        # OOD metrics if loader provided
+        if ood_loader is not None:
+            tau_hat = core['tau_hat']
+            _, ood_g, _ = self.collect_predictions(ood_loader)
+            ood_accept_rate = (ood_g >= tau_hat).float().mean().item()
+            dar = ood_accept_rate
+
+            id_cov = core['test_coverage']
+            safety_ratio = id_cov / (ood_accept_rate + 1e-8)
+
+            result.update({
+                'ood_accept_rate': ood_accept_rate,
+                'dar': dar,
+                'safety_ratio': safety_ratio,
+            })
+
+        return result
 
 
 if __name__ == '__main__':

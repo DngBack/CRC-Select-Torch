@@ -27,8 +27,12 @@ from selectivenet.data_splits import get_split_loaders
 from selectivenet.evaluator_crc import CRCEvaluator
 from selectivenet.reproducibility import set_seed
 
-from crc.calibrate import compute_crc_threshold, calibrate_selector
-from crc.risk_utils import compute_selective_risk, compute_coverage
+from crc.calibrate import crc_calibrate_threshold
+from crc.risk_utils import (
+    compute_selective_risk,
+    compute_coverage,
+    compute_accepted_loss_mass,
+)
 
 
 def load_vanilla_selectivenet(checkpoint_path, args):
@@ -95,145 +99,99 @@ def main(args):
     
     # ==================== Calibrate Threshold ====================
     print(f"\n[3/5] Applying post-hoc CRC calibration...")
-    print(f"  Target risk: {args.alpha_risk}")
-    print(f"  Initial tau: {args.tau_init}")
-    
-    # Apply CRC calibration on calibration set
-    calib_result = compute_crc_threshold(
-        model=model,
-        cal_loader=cal_loader,
-        tau=args.tau_init,
-        alpha=args.alpha_risk,
-        delta=args.delta,
-        device='cuda'
+    print(f"  Target risk (alpha): {args.alpha_risk}")
+
+    evaluator = CRCEvaluator(model, device='cuda')
+
+    # Collect calibration predictions
+    cal_logits, cal_g, cal_targets = evaluator.collect_predictions(cal_loader)
+
+    # Proper CRC calibration:
+    #   tau_hat = inf{tau : (n/(n+1)) * A_hat_n(tau) + 1/(n+1) <= alpha}
+    calib_result = crc_calibrate_threshold(
+        cal_logits, cal_g, cal_targets, args.alpha_risk
     )
-    
-    q_crc = calib_result['q']
-    tau_calibrated = args.tau_init  # Keep same tau, q is the risk threshold
-    
+    tau_hat = calib_result['tau_hat']
+
     print(f"\n  Calibration results:")
-    print(f"    CRC threshold q: {q_crc:.4f}")
-    print(f"    Acceptance threshold tau: {tau_calibrated:.4f}")
-    print(f"    Coverage on cal: {calib_result['actual_coverage']:.4f}")
-    print(f"    Risk on cal: {calib_result['estimated_risk']:.4f}")
-    print(f"    Accepted samples: {calib_result['num_accepted']}/{calib_result['num_total']}")
-    
+    print(f"    tau_hat: {tau_hat:.6f}")
+    print(f"    Accepted-loss mass on cal: {calib_result['accepted_loss_mass']:.4f}")
+    print(f"    Coverage on cal: {calib_result['coverage']:.4f}")
+
     # ==================== Evaluate on Test Set ====================
     print(f"\n[4/5] Evaluating on test set...")
-    evaluator = CRCEvaluator(model, device='cuda')
-    
-    # Collect test predictions
-    test_logits, test_g, test_targets = evaluator.collect_predictions(test_loader)
-    
-    # Compute metrics at calibrated threshold
-    test_risk = compute_selective_risk(
-        test_logits, test_g, test_targets,
-        threshold=tau_calibrated, hard=True
-    )
-    test_coverage = compute_coverage(test_g, tau_calibrated)
-    
-    # Compute accuracy metrics
-    test_preds = test_logits.argmax(dim=1)
-    test_correct = (test_preds == test_targets).float()
-    
-    # Overall accuracy (all samples)
-    test_acc = test_correct.mean()
-    
-    # Selective accuracy (only accepted samples)
-    acceptance_mask = (test_g >= tau_calibrated).float()
-    num_accepted = acceptance_mask.sum().item()
-    
-    if num_accepted > 0:
-        test_selective_acc = (acceptance_mask * test_correct).sum() / num_accepted
-    else:
-        test_selective_acc = torch.tensor(0.0)
-    
-    # Error rate on accepted samples (should relate to risk)
-    if num_accepted > 0:
-        test_selective_err = 1.0 - test_selective_acc
-    else:
-        test_selective_err = torch.tensor(0.0)
-    
-    print(f"\n  Test results (tau={tau_calibrated:.4f}):")
-    print(f"    Coverage: {test_coverage:.4f} ({int(num_accepted)}/{len(test_targets)} samples)")
-    print(f"    Selective risk: {test_risk:.4f}")
-    print(f"    Selective error: {test_selective_err:.4f}")
-    print(f"    Selective accuracy: {test_selective_acc:.4f}")
-    print(f"    Overall accuracy: {test_acc:.4f}")
-    print(f"    Risk violation: {'YES ⚠️ ' if test_risk > args.alpha_risk else 'NO ✓'} "
-          f"(target: {args.alpha_risk:.4f})")
-    
+
+    # Use compute_all_metrics for comprehensive evaluation
+    alpha_values = [0.05, 0.1, 0.15, 0.2]
+
+    # Load OOD if available
+    ood_loader = None
+    if not getattr(args, 'skip_ood', False):
+        try:
+            ood_loader = dataset_builder.get_ood_loader(
+                args.ood_dataset, args.batch_size,
+                normalize_to_id=True, num_workers=args.num_workers
+            )
+        except Exception:
+            ood_loader = None
+
+    all_metrics_rows = []
+    for alpha in alpha_values:
+        metrics = evaluator.compute_all_metrics(
+            cal_loader, test_loader, alpha, ood_loader=ood_loader
+        )
+        metrics['method'] = 'posthoc_crc'
+        metrics['dataset'] = args.dataset
+        metrics['seed'] = args.seed
+        all_metrics_rows.append(metrics)
+        print(f"  alpha={alpha:.3f}: A_hat={metrics['test_accepted_loss_mass']:.4f}, "
+              f"cov={metrics['test_coverage']:.4f}, "
+              f"viol_gap={metrics['violation_gap']:.4f}")
+
     # ==================== Generate Full Evaluation ====================
     print(f"\n[5/5] Generating comprehensive evaluation...")
-    
+
     # Risk-coverage curve
-    taus = np.linspace(0.3, 0.8, 20)
+    taus = np.linspace(0.0, 1.0, 201)
     rc_curve = evaluator.sweep_tau_risk_coverage(test_loader, taus)
-    
-    # Coverage at risk for multiple alphas
-    alphas = [0.05, 0.1, 0.15, 0.2]
-    coverage_at_risk_results = []
-    for alpha in alphas:
-        result = evaluator.compute_coverage_at_risk(test_loader, alpha, taus)
-        coverage_at_risk_results.append(result)
-        print(f"  Coverage@Risk({alpha:.2f}): {result['coverage']:.3f}")
-    
+
     # ==================== Save Results ====================
     results_dir = os.path.join(args.output_dir, 'posthoc_crc', f'seed_{args.seed}')
     os.makedirs(results_dir, exist_ok=True)
-    
-    # Save calibration results
-    calib_summary = {
-        'method': 'posthoc_crc',
-        'seed': args.seed,
-        'alpha_risk': args.alpha_risk,
-        'tau_init': args.tau_init,
-        'tau_calibrated': tau_calibrated,
-        'q_crc': q_crc,
-        'cal_coverage': calib_result['actual_coverage'],
-        'cal_risk': calib_result['estimated_risk'],
-        'test_coverage': test_coverage.item(),
-        'test_risk': test_risk.item(),
-        'test_selective_acc': test_selective_acc.item(),
-        'test_selective_err': test_selective_err.item(),
-        'test_overall_acc': test_acc.item(),
-        'risk_violation': test_risk.item() > args.alpha_risk
-    }
-    
-    calib_df = pd.DataFrame([calib_summary])
-    calib_path = os.path.join(results_dir, 'calibration_summary.csv')
-    calib_df.to_csv(calib_path, index=False)
-    
+
+    # Save all metrics
+    metrics_df = pd.DataFrame(all_metrics_rows)
+    metrics_df.to_csv(os.path.join(results_dir, 'all_metrics.csv'), index=False)
+
     # Save risk-coverage curve
-    rc_path = os.path.join(results_dir, 'risk_coverage_curve.csv')
-    rc_curve.to_csv(rc_path, index=False)
-    
-    # Save coverage at risk
-    cov_at_risk_df = pd.DataFrame(coverage_at_risk_results)
-    cov_at_risk_path = os.path.join(results_dir, 'coverage_at_risk.csv')
-    cov_at_risk_df.to_csv(cov_at_risk_path, index=False)
-    
-    print(f"\n  ✓ Results saved to {results_dir}")
-    
+    rc_curve.to_csv(os.path.join(results_dir, 'risk_coverage_curve.csv'), index=False)
+
+    # Save summary for primary alpha
+    primary = metrics_df[metrics_df['alpha'] == args.alpha_risk]
+    if len(primary) == 0:
+        primary = metrics_df.iloc[[0]]
+    summary = primary.iloc[0].to_dict()
+    summary_df = pd.DataFrame([summary])
+    summary_df.to_csv(os.path.join(results_dir, 'summary.csv'), index=False)
+
+    print(f"\n  Results saved to {results_dir}")
+
     # ==================== Summary ====================
+    s = primary.iloc[0]
     print("\n" + "=" * 80)
     print("Post-hoc CRC Baseline Summary")
     print("=" * 80)
     print(f"Method: Post-hoc CRC (2-stage)")
-    print(f"Calibrated on: {calib_result['num_accepted']} cal samples")
-    print(f"\nCalibration Set:")
-    print(f"  Coverage: {calib_result['actual_coverage']:.3f}")
-    print(f"  Risk: {calib_result['estimated_risk']:.3f}")
-    print(f"\nTest Set Performance:")
-    print(f"  Coverage: {test_coverage:.3f} ({int(num_accepted)}/{len(test_targets)})")
-    print(f"  Selective Risk: {test_risk:.3f} (target: {args.alpha_risk:.3f})")
-    print(f"  Selective Error: {test_selective_err:.3f}")
-    print(f"  Selective Accuracy: {test_selective_acc:.3f}")
-    print(f"  Overall Accuracy: {test_acc:.3f}")
-    print(f"  Risk Violation: {'YES ⚠️' if test_risk > args.alpha_risk else 'NO ✓'}")
+    print(f"tau_hat: {s['tau_hat']:.6f}")
+    print(f"Accepted-loss mass: {s['test_accepted_loss_mass']:.4f} (target: {s['alpha']:.3f})")
+    print(f"Coverage: {s['test_coverage']:.4f}")
+    print(f"Selective risk: {s['test_selective_risk']:.4f}")
+    print(f"Selective accuracy: {s['test_selective_acc']:.4f}")
+    print(f"Violation gap: {s['violation_gap']:.4f}")
+    print(f"AUROC: {s['auroc']:.4f}, AUPR: {s['aupr']:.4f}")
     print("=" * 80)
-    
-    return calib_summary
+
+    return summary
 
 
 if __name__ == '__main__':
@@ -258,10 +216,8 @@ if __name__ == '__main__':
     # CRC calibration settings
     parser.add_argument('--alpha_risk', type=float, default=0.1,
                        help='target risk level for CRC')
-    parser.add_argument('--tau_init', type=float, default=0.5,
-                       help='initial acceptance threshold')
-    parser.add_argument('--delta', type=float, default=0.1,
-                       help='failure probability for CRC bound')
+    parser.add_argument('--skip_ood', action='store_true',
+                       help='skip OOD evaluation')
     
     # Output
     parser.add_argument('-o', '--output_dir', type=str, default='../results',
