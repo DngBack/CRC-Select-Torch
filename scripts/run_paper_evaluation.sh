@@ -19,8 +19,8 @@ echo "==========================================================================
 # Configuration
 CRC_SELECT_CHECKPOINT="wandb/offline-run-20260127_091317-5aulwvrk/files/checkpoints/checkpoint_best_val.pth"
 VANILLA_CHECKPOINT="wandb/offline-run-20260126_094732-1fotfotl/files/checkpoints/checkpoint_best_val.pth"
-RESULTS_DIR="../results_paper"
-FIGURES_DIR="../paper_figures"
+RESULTS_DIR="./results_paper"
+FIGURES_DIR="./paper_figures"
 DATASET="cifar10"
 OOD_DATASET="svhn"
 SEEDS=(42 123 456)

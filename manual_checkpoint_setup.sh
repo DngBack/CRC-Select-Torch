@@ -2,7 +2,7 @@
 # manual_checkpoint_setup.sh
 # Manual mapping of wandb runs to seeds
 
-cd /home/admin1/Desktop/CRC-Select-Torch
+cd "$(dirname "$0")"
 
 echo "========================================="
 echo "Manual Checkpoint Organization"

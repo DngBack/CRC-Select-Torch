@@ -86,16 +86,17 @@ class GamblerLoss(nn.Module):
 
 def train_deep_gambler(args):
     """Train a Deep Gambler model from scratch."""
+    device = args.device
     dataset_builder = DatasetBuilder(args.dataset, args.dataroot)
     backbone_name = getattr(args, 'backbone', 'vgg16')
     if backbone_name == 'vgg16':
-        features = vgg16_variant(32, args.dropout_prob).cuda()
+        features = vgg16_variant(32, args.dropout_prob).to(device)
         dim_f = args.dim_features
     else:
         features, dim_f = get_backbone(backbone_name, 32, args.dropout_prob)
-        features = features.cuda()
+        features = features.to(device)
 
-    model = DeepGamblerNet(features, dim_f, dataset_builder.num_classes).cuda()
+    model = DeepGamblerNet(features, dim_f, dataset_builder.num_classes).to(device)
     criterion = GamblerLoss(reward=args.reward)
 
     full_train = dataset_builder(train=True, normalize=True, augmentation='original')
@@ -113,7 +114,7 @@ def train_deep_gambler(args):
     for epoch in range(args.num_epochs):
         model.train()
         for x, y in train_loader:
-            x, y = x.cuda(), y.cuda()
+            x, y = x.to(device), y.to(device)
             class_logits, abstain_logit = model(x)
             logits_all = torch.cat([class_logits, abstain_logit.unsqueeze(1)], dim=1)
             loss = criterion(logits_all, y)
@@ -128,7 +129,7 @@ def train_deep_gambler(args):
     ckpt_dir = os.path.join('checkpoints', 'DeepGambler')
     os.makedirs(ckpt_dir, exist_ok=True)
     ckpt_path = os.path.join(ckpt_dir, f'seed_{args.seed}.pth')
-    torch.save({'state_dict': model.state_dict()}, ckpt_path)
+    torch.save({'state_dict': model.state_dict()}, ckpt_path, _use_new_zipfile_serialization=True)
     print(f"  Checkpoint saved to {ckpt_path}")
     return model, cal_loader, test_loader, dataset_builder
 
@@ -186,6 +187,8 @@ def main(args):
     print("Deep Gambler Baseline")
     print("=" * 80)
 
+    device = args.device
+
     if args.train:
         print("Training Deep Gambler model...")
         model, cal_loader, test_loader, dataset_builder = train_deep_gambler(args)
@@ -194,15 +197,15 @@ def main(args):
         dataset_builder = DatasetBuilder(args.dataset, args.dataroot)
         backbone_name = getattr(args, 'backbone', 'vgg16')
         if backbone_name == 'vgg16':
-            features = vgg16_variant(32, args.dropout_prob).cuda()
+            features = vgg16_variant(32, args.dropout_prob).to(device)
             dim_f = args.dim_features
         else:
             features, dim_f = get_backbone(backbone_name, 32, args.dropout_prob)
-            features = features.cuda()
+            features = features.to(device)
         model = DeepGamblerNet(
             features, dim_f, dataset_builder.num_classes
-        ).cuda()
-        ckpt = torch.load(args.checkpoint, weights_only=False)
+        ).to(device)
+        ckpt = torch.load(args.checkpoint, map_location=device, weights_only=False)
         if 'state_dict' in ckpt:
             model.load_state_dict(ckpt['state_dict'])
         else:
@@ -216,8 +219,8 @@ def main(args):
         )
 
     model.eval()
-    cal_logits, cal_conf, cal_targets = collect_gambler_predictions(model, cal_loader)
-    test_logits, test_conf, test_targets = collect_gambler_predictions(model, test_loader)
+    cal_logits, cal_conf, cal_targets = collect_gambler_predictions(model, cal_loader, device=device)
+    test_logits, test_conf, test_targets = collect_gambler_predictions(model, test_loader, device=device)
 
     alpha_values = args.alpha_values or [0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
 
@@ -227,9 +230,10 @@ def main(args):
         tau_hat = crc['tau_hat']
         m = evaluate_at_tau(test_logits, test_conf, test_targets, tau_hat)
         violation_gap = max(m['accepted_loss_mass'] - alpha, 0.0)
-        auroc, aupr = compute_error_detection_auroc_aupr(
+        _auroc_aupr = compute_error_detection_auroc_aupr(
             test_logits, test_conf, test_targets
         )
+        auroc, aupr = _auroc_aupr['auroc'], _auroc_aupr['aupr']
         row = {
             'method': 'DeepGambler',
             'dataset': args.dataset,
@@ -272,11 +276,12 @@ if __name__ == '__main__':
                        help='abstention reward for gambler loss')
     parser.add_argument('--num_epochs', type=int, default=200)
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('--alpha_values', type=float, nargs='+', default=None)
-    parser.add_argument('-o', '--output_dir', type=str, default='../results_paper')
+    parser.add_argument('-o', '--output_dir', type=str, default='./results_paper')
     args = parser.parse_args()
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     main(args)

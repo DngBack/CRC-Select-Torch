@@ -6,7 +6,7 @@ This is the key metric for evaluating conformal risk control guarantees.
 
 Usage:
     python compute_violation_rate.py \
-        --results_dir ../results_paper/CRC-Select \
+        --results_dir ./results_paper/CRC-Select \
         --seeds 42 123 456 789 999 \
         --alpha 0.1 \
         --margin 0.0
@@ -316,7 +316,7 @@ if __name__ == '__main__':
     parser.add_argument('--margin', type=float, default=0.0,
                        help='tolerance margin for violations (e.g., 0.1 = 10%% slack)')
     parser.add_argument('-o', '--output_dir', type=str,
-                       default='../results/violation_rate',
+                       default='./results/violation_rate',
                        help='directory to save results')
     parser.add_argument('--generate_latex', action='store_true',
                        help='generate LaTeX table')

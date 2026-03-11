@@ -37,15 +37,16 @@ from crc.risk_utils import (
 
 def load_vanilla_selectivenet(checkpoint_path, args):
     """Load pre-trained vanilla SelectiveNet model."""
+    device = args.device
     dataset_builder = DatasetBuilder(name=args.dataset, root_path=args.dataroot)
-    features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).cuda()
+    features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).to(device)
     model = SelectiveNet(
         features, args.dim_features, dataset_builder.num_classes,
         div_by_ten=args.div_by_ten
-    ).cuda()
+    ).to(device)
     
     # Load checkpoint
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
     
     # Handle different checkpoint formats
     if isinstance(checkpoint, list):
@@ -71,7 +72,6 @@ def main(args):
     print(f"Checkpoint: {args.checkpoint}")
     print(f"Seed: {args.seed}")
     print(f"Target risk (alpha): {args.alpha_risk}")
-    print(f"Initial tau: {args.tau_init}")
     print("=" * 80)
     
     # ==================== Load Model ====================
@@ -101,7 +101,7 @@ def main(args):
     print(f"\n[3/5] Applying post-hoc CRC calibration...")
     print(f"  Target risk (alpha): {args.alpha_risk}")
 
-    evaluator = CRCEvaluator(model, device='cuda')
+    evaluator = CRCEvaluator(model, device=args.device)
 
     # Collect calibration predictions
     cal_logits, cal_g, cal_targets = evaluator.collect_predictions(cal_loader)
@@ -122,7 +122,7 @@ def main(args):
     print(f"\n[4/5] Evaluating on test set...")
 
     # Use compute_all_metrics for comprehensive evaluation
-    alpha_values = [0.05, 0.1, 0.15, 0.2]
+    alpha_values = [0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
 
     # Load OOD if available
     ood_loader = None
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--ood_dataset', type=str, default='svhn',
                        help='OOD dataset for evaluation (for compatibility with eval script)')
     parser.add_argument('--seed', type=int, default=42)
@@ -220,9 +220,10 @@ if __name__ == '__main__':
                        help='skip OOD evaluation')
     
     # Output
-    parser.add_argument('-o', '--output_dir', type=str, default='../results',
+    parser.add_argument('-o', '--output_dir', type=str, default='./results_paper',
                        help='directory to save results')
     
     args = parser.parse_args()
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     main(args)
 

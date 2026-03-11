@@ -20,7 +20,7 @@ from scripts.test import test
 @click.option('-t', '--target_dir', type=str, required=True)
 # data
 @click.option('-d', '--dataset', type=str, required=True)
-@click.option('--dataroot', type=str, default='../data', help='path to dataset root')
+@click.option('--dataroot', type=str, default='./data', help='path to dataset root')
 
 def main(**kwargs):
     test_multi(**kwargs)

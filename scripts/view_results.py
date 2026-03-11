@@ -2,7 +2,7 @@
 Quick script to view all evaluation results in a nice format.
 
 Usage:
-    python3 view_results.py --results_dir ../results_paper
+    python3 view_results.py --results_dir ./results_paper
 """
 
 import os
@@ -252,7 +252,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser()
     
-    parser.add_argument('--results_dir', type=str, default='../results_paper',
+    parser.add_argument('--results_dir', type=str, default='./results_paper',
                        help='Directory containing evaluation results')
     parser.add_argument('--seed', type=int, default=42,
                        help='Seed to view results for')

@@ -20,7 +20,7 @@ def test_train_selective_loss():
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(mean=mean, std=std)
     ])
-    data_root = os.path.join('/home/setarehc/scratch/selectivenet/data', 'cifar10')
+    data_root = os.path.join('./data', 'cifar10')
     train_dataset = torchvision.datasets.CIFAR10(data_root, True, transform, download=True)
     train_loader  = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=8, pin_memory=True)
 

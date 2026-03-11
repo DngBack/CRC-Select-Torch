@@ -12,7 +12,7 @@ model:
 # ===================== Data =====================
 data:
   dataset: cifar10           # options: cifar10, cifar100, tinyimagenet
-  dataroot: ../data
+  dataroot: ./data
   batch_size: 128
   num_workers: 8
   normalize: true

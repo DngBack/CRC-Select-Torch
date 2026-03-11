@@ -2,7 +2,7 @@
 # organize_checkpoints.sh
 # Copy checkpoint files from wandb runs to organized checkpoints folder
 
-cd /home/admin1/Desktop/CRC-Select-Torch
+cd "$(dirname "$0")"
 
 # Create checkpoints directory
 mkdir -p checkpoints

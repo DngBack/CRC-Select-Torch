@@ -284,22 +284,9 @@ def train_crc_select(args):
     # ==================== Final CRC Calibration ====================
     print("\n" + "=" * 80)
     print("Running final CRC calibration on cal set (frozen model)...")
-    model.eval()
-    with torch.no_grad():
-        all_logits, all_g, all_t = [], [], []
-        for x, t in cal_loader:
-            x, t = x.cuda(), t.cuda()
-            logits, g, _ = model(x)
-            all_logits.append(logits.cpu())
-            all_g.append(g.cpu())
-            all_t.append(t.cpu())
-        cal_logits = torch.cat(all_logits)
-        cal_g = torch.cat(all_g).squeeze()
-        cal_targets = torch.cat(all_t)
-
-        final_crc = crc_calibrate_threshold(
-            cal_logits, cal_g, cal_targets, args.alpha_risk
-        )
+    final_crc = crc_calibrate_threshold(
+        model, cal_loader, alpha=args.alpha_risk
+    )
     tau_hat = final_crc['tau_hat']
     print(f"  tau_hat: {tau_hat:.6f}")
     print(f"  Accepted-loss mass at tau_hat: {final_crc['accepted_loss_mass']:.6f}")
@@ -355,7 +342,7 @@ if __name__ == '__main__':
     
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data', 
+    parser.add_argument('--dataroot', type=str, default='./data', 
                        help='path to dataset root')
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
@@ -404,7 +391,7 @@ if __name__ == '__main__':
     
     # Logging
     parser.add_argument('-s', '--suffix', type=str, default='')
-    parser.add_argument('-l', '--log_dir', type=str, default='../logs/train_crc')
+    parser.add_argument('-l', '--log_dir', type=str, default='./logs/train_crc')
     parser.add_argument('--unobserve', action='store_true',
                        help='disable Weights & Biases')
     

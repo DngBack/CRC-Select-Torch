@@ -177,7 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('--div_by_ten', action='store_true', help='divide by 10 when calculating g') # flag - default is false
     # data
     parser.add_argument('-d', '--dataset', type=str, required=True)
-    parser.add_argument('--dataroot', type=str, default='../data', help='path to dataset root')
+    parser.add_argument('--dataroot', type=str, default='./data', help='path to dataset root')
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('--normalize', action='store_false') # flag - default is true
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--alpha', type=float, default=0.5, help='balancing parameter between selective_loss and ce_loss')
     # logging
     parser.add_argument('-s', '--suffix', type=str, default='')
-    parser.add_argument('-l', '--log_dir', type=str, default='../logs/train')
+    parser.add_argument('-l', '--log_dir', type=str, default='./logs/train')
     # wandb 
     parser.add_argument('--unobserve', action='store_true', help='disable Weights & Biases') # flag - default is false 
     args = parser.parse_args()

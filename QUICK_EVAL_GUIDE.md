@@ -23,7 +23,7 @@ for seed in 42 123 456 789 999; do
 done
 ```
 
-Kết quả checkpoint lưu tại `results/CRC-Select/seed_<s>/`.
+Kết quả checkpoint lưu tại `checkpoints/CRC-Select/seed_<s>.pth`.
 
 ---
 
@@ -34,9 +34,10 @@ Kết quả checkpoint lưu tại `results/CRC-Select/seed_<s>/`.
 ```bash
 for seed in 42 123 456 789 999; do
     python scripts/evaluate_for_paper.py \
-        --checkpoint_dir results/CRC-Select/seed_$seed \
+        -c checkpoints/CRC-Select/seed_${seed}.pth \
         --dataset cifar10 \
-        --backbone vgg16
+        --backbone vgg16 \
+        --seed $seed
 done
 ```
 
@@ -44,11 +45,11 @@ done
 
 ```bash
 for seed in 42 123 456 789 999; do
-    python scripts/baseline_msp.py          --dataset cifar10 --seed $seed
-    python scripts/baseline_temp_scaled.py   --dataset cifar10 --seed $seed
-    python scripts/baseline_posthoc_crc.py   --checkpoint_dir results/CRC-Select/seed_$seed --dataset cifar10
-    python scripts/baseline_deep_gambler.py  --dataset cifar10 --seed $seed
-    python scripts/baseline_energy.py        --dataset cifar10 --seed $seed
+    python scripts/baseline_msp.py          -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_temp_scaled.py   -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_posthoc_crc.py   -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_energy.py        -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_deep_gambler.py  --train --dataset cifar10 --seed $seed
 done
 ```
 

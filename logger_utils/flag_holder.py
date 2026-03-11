@@ -47,4 +47,4 @@ if __name__ == '__main__':
     FLAGS = FlagHolder()
     FLAGS.initialize(**flag)
     FLAGS.summary()
-    FLAGS.dump('../../logs/flags.json')
+    FLAGS.dump('./logs/flags.json')

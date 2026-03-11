@@ -134,9 +134,10 @@ def main(args):
         violation_gap = max(m['accepted_loss_mass'] - alpha, 0.0)
 
         # AUROC / AUPR
-        auroc, aupr = compute_error_detection_auroc_aupr(
+        _auroc_aupr = compute_error_detection_auroc_aupr(
             test_logits, test_conf, test_targets
         )
+        auroc, aupr = _auroc_aupr['auroc'], _auroc_aupr['aupr']
 
         row = {
             'method': 'MSP',
@@ -180,11 +181,11 @@ if __name__ == '__main__':
     parser.add_argument('--backbone', type=str, default='vgg16',
                        choices=['vgg16', 'resnet18', 'wrn28_10'])
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('--alpha_values', type=float, nargs='+', default=None)
-    parser.add_argument('-o', '--output_dir', type=str, default='../results_paper')
+    parser.add_argument('-o', '--output_dir', type=str, default='./results_paper')
     args = parser.parse_args()
     main(args)

@@ -14,7 +14,7 @@ from logger_utils.flag_holder import FlagHolder
 @click.command()
 # data
 @click.option('-d', '--dataset', type=str, required=True)
-@click.option('--dataroot', type=str, default='../data', help='path to dataset root')
+@click.option('--dataroot', type=str, default='./data', help='path to dataset root')
 # optimization
 @click.option('--num_epochs', type=int, default=300)
 # logging

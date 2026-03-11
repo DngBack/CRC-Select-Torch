@@ -6,11 +6,11 @@ providing a fair comparison of OOD robustness.
 
 Usage:
     python compare_ood_safety.py \
-        --results_dir ../results_paper \
+        --results_dir ./results_paper \
         --methods CRC-Select posthoc_crc vanilla \
         --seeds 42 123 456 \
         --id_coverages 0.7 0.8 0.9 \
-        --output_dir ../results/ood_comparison
+        --output_dir ./results/ood_comparison
 """
 import os
 import sys
@@ -329,7 +329,7 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='Compare OOD safety across methods')
     
     parser.add_argument('-r', '--results_dir', type=str, 
-                       default='../results_paper',
+                       default='./results_paper',
                        help='directory containing results for all methods')
     parser.add_argument('--methods', type=str, nargs='+', required=True,
                        help='list of method names to compare')
@@ -340,7 +340,7 @@ if __name__ == '__main__':
                        default=[0.6, 0.7, 0.8, 0.9],
                        help='ID coverage levels to analyze')
     parser.add_argument('-o', '--output_dir', type=str,
-                       default='../results/ood_comparison',
+                       default='./results/ood_comparison',
                        help='directory to save comparison results')
     parser.add_argument('--plot', action='store_true',
                        help='generate comparison plots')

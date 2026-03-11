@@ -29,15 +29,15 @@ python scripts/train_crc_select.py \
 
 # Evaluate
 python scripts/evaluate_for_paper.py \
-    --checkpoint_dir checkpoints/seed_42 \
-    --dataset cifar10 --backbone vgg16
+    -c checkpoints/CRC-Select/seed_42.pth \
+    --dataset cifar10 --backbone vgg16 --seed 42
 
-# Run all baselines
-python scripts/baseline_msp.py        --dataset cifar10 --seed 42
-python scripts/baseline_temp_scaled.py --dataset cifar10 --seed 42
-python scripts/baseline_posthoc_crc.py --checkpoint_dir checkpoints/seed_42 --dataset cifar10
-python scripts/baseline_deep_gambler.py --dataset cifar10 --seed 42
-python scripts/baseline_energy.py       --dataset cifar10 --seed 42
+# Run all baselines (all need a trained checkpoint)
+python scripts/baseline_msp.py         -c checkpoints/CRC-Select/seed_42.pth --dataset cifar10 --seed 42
+python scripts/baseline_temp_scaled.py  -c checkpoints/CRC-Select/seed_42.pth --dataset cifar10 --seed 42
+python scripts/baseline_posthoc_crc.py  -c checkpoints/CRC-Select/seed_42.pth --dataset cifar10 --seed 42
+python scripts/baseline_energy.py       -c checkpoints/CRC-Select/seed_42.pth --dataset cifar10 --seed 42
+python scripts/baseline_deep_gambler.py --train --dataset cifar10 --seed 42
 ```
 
 ---
@@ -111,18 +111,17 @@ done
 # Evaluate CRC-Select across seeds
 for seed in 42 123 456 789 999; do
     python scripts/evaluate_for_paper.py \
-        --checkpoint_dir results/CRC-Select/seed_$seed \
-        --dataset cifar10 --backbone vgg16
+        -c checkpoints/CRC-Select/seed_${seed}.pth \
+        --dataset cifar10 --backbone vgg16 --seed $seed
 done
 
 # Run baselines
 for seed in 42 123 456 789 999; do
-    python scripts/baseline_msp.py         --dataset cifar10 --seed $seed
-    python scripts/baseline_temp_scaled.py  --dataset cifar10 --seed $seed
-    python scripts/baseline_deep_gambler.py --dataset cifar10 --seed $seed
-    python scripts/baseline_energy.py       --dataset cifar10 --seed $seed
-    python scripts/baseline_posthoc_crc.py  --checkpoint_dir results/CRC-Select/seed_$seed \
-        --dataset cifar10
+    python scripts/baseline_msp.py         -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_temp_scaled.py  -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_energy.py       -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_posthoc_crc.py  -c checkpoints/CRC-Select/seed_${seed}.pth --dataset cifar10 --seed $seed
+    python scripts/baseline_deep_gambler.py --train --dataset cifar10 --seed $seed
 done
 ```
 

@@ -189,7 +189,7 @@ if __name__ == '__main__':
     
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--ood_dataset', type=str, default='svhn',
                        help='OOD dataset for evaluation')
     parser.add_argument('--seed', type=int, default=42)
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                        help='list of OOD proportions for mixture evaluation')
     
     # Output
-    parser.add_argument('-o', '--output_dir', type=str, default='../results',
+    parser.add_argument('-o', '--output_dir', type=str, default='./results',
                        help='directory to save evaluation results')
     
     args = parser.parse_args()

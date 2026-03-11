@@ -2,7 +2,7 @@
 # run_eval_all_seeds.sh
 # Run evaluation on all available seeds
 
-cd /home/admin1/Desktop/CRC-Select-Torch
+cd "$(dirname "$0")"
 
 echo "========================================="
 echo "Multi-Seed Evaluation"
@@ -43,7 +43,7 @@ for seed in "${SEEDS[@]}"; do
         --seed $seed \
         --method_name "CRC-Select" \
         --dataset cifar10 \
-        --output_dir ../results_paper
+        --output_dir ./results_paper
     
     if [ $? -eq 0 ]; then
         echo "✅ Seed $seed completed"

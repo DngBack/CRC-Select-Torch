@@ -18,10 +18,10 @@ Tables:
 
 Usage:
     python generate_paper_figures.py \
-        --results_dir ../results_paper \
+        --results_dir ./results_paper \
         --methods "CRC-Select" "vanilla" "posthoc_crc" "MSP" "TempScaled_MSP" "Energy" \
         --seeds 42 123 456 789 999 \
-        --output_dir ../figures
+        --output_dir ./figures
 """
 
 import os
@@ -410,7 +410,7 @@ if __name__ == '__main__':
     parser.add_argument('--methods', type=str, nargs='+', required=True)
     parser.add_argument('--seeds', type=int, nargs='+', default=[42, 123, 456, 789, 999])
     parser.add_argument('--skip_ood', action='store_true')
-    parser.add_argument('-o', '--output_dir', type=str, default='../figures')
+    parser.add_argument('-o', '--output_dir', type=str, default='./figures')
     args = parser.parse_args()
     main(args)
 

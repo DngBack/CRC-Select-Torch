@@ -277,7 +277,7 @@ if __name__ == '__main__':
     from selectivenet.data import DatasetBuilder
     
     # Create dataset
-    dataset_builder = DatasetBuilder(name='cifar10', root_path='../data')
+    dataset_builder = DatasetBuilder(name='cifar10', root_path='./data')
     train_dataset = dataset_builder(train=True, normalize=True, augmentation='original')
     
     print(f"Dataset size: {len(train_dataset)}")

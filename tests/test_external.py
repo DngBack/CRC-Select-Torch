@@ -8,7 +8,7 @@ from logger_utils.logger import Logger
 from logger_utils.misc import get_time_stamp
 
 def test_logger():
-    log_path_root = '/home/setarehc/scratch/selectivenet/logs'
+    log_path_root = './logs'
     log_basename = 'log_test_'+get_time_stamp('short')
     log_path = os.path.join(log_path_root, log_basename)
 

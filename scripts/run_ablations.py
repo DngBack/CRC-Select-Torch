@@ -103,7 +103,7 @@ def build_eval_command(checkpoint_dir, base_args, alpha):
     """Build the evaluation command."""
     cmd = [
         sys.executable, os.path.join(base, 'scripts', 'evaluate_for_paper.py'),
-        '--checkpoint_dir', checkpoint_dir,
+        '--checkpoint', checkpoint_dir,
         '--dataset', base_args.dataset,
         '--dataroot', base_args.dataroot,
         '--alphas', str(alpha),
@@ -209,13 +209,13 @@ def main():
                         help='Which ablation to run (A1-A7 or all)')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'tinyimagenet'])
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--seeds', type=int, nargs='+',
                         default=[42, 123, 456, 789, 999])
     parser.add_argument('--num_epochs', type=int, default=200)
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--output_dir', type=str,
-                        default='../results/ablations')
+                        default='./results/ablations')
     parser.add_argument('--dry_run', action='store_true',
                         help='Print commands without executing')
 

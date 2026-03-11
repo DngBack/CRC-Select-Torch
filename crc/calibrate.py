@@ -18,9 +18,10 @@ from .risk_utils import compute_risk_scores, compute_acceptance_mask, compute_ac
 
 
 def crc_calibrate_threshold(
-    model: torch.nn.Module,
-    cal_loader: torch.utils.data.DataLoader,
-    alpha: float,
+    model_or_logits,
+    cal_loader_or_g,
+    targets_or_alpha=None,
+    alpha: float = None,
     n_thresholds: int = 1000,
     device: str = 'cuda'
 ) -> Dict:
@@ -31,39 +32,44 @@ def crc_calibrate_threshold(
     
     where A_hat_n(tau) = (1/n) sum_i r_i * 1{g_i >= tau}.
     
-    Args:
-        model: Trained SelectiveNet model (frozen)
-        cal_loader: DataLoader for calibration set D_cal
-        alpha: Target accepted-loss mass level
-        n_thresholds: Number of threshold candidates to sweep
-        device: Device for computation
+    Supports two calling conventions:
+        1) crc_calibrate_threshold(model, cal_loader, alpha=0.1)
+        2) crc_calibrate_threshold(logits, g_scores, targets, alpha=0.1)
     
     Returns:
-        Dictionary with:
-            - tau_hat: CRC-calibrated threshold
-            - accepted_loss_mass: A_hat at tau_hat
-            - coverage: Coverage at tau_hat
-            - selective_risk: Conditional selective risk at tau_hat
-            - all_g: All selection scores (for analysis)
-            - all_r: All risk scores (for analysis)
+        Dictionary with tau_hat, accepted_loss_mass, coverage, selective_risk, etc.
     """
-    model.eval()
-    
-    all_logits = []
-    all_g = []
-    all_targets = []
-    
-    with torch.no_grad():
-        for x, y in cal_loader:
-            x, y = x.to(device), y.to(device)
-            logits, g, _ = model(x)
-            all_logits.append(logits.cpu())
-            all_g.append(g.cpu())
-            all_targets.append(y.cpu())
-    
-    all_logits = torch.cat(all_logits, dim=0)
-    all_g = torch.cat(all_g, dim=0).squeeze()
-    all_targets = torch.cat(all_targets, dim=0)
+    # Detect calling convention
+    if isinstance(model_or_logits, torch.Tensor):
+        # Called with (logits, g, targets, alpha)
+        all_logits = model_or_logits
+        all_g = cal_loader_or_g.squeeze()
+        all_targets = targets_or_alpha
+        if alpha is None:
+            raise ValueError("alpha is required")
+    else:
+        # Called with (model, cal_loader, alpha=...)
+        model = model_or_logits
+        cal_loader = cal_loader_or_g
+        if alpha is None:
+            alpha = targets_or_alpha
+        if alpha is None:
+            raise ValueError("alpha is required")
+
+        model.eval()
+        all_logits = []
+        all_g = []
+        all_targets = []
+        with torch.no_grad():
+            for x, y in cal_loader:
+                x, y = x.to(device), y.to(device)
+                logits, g, _ = model(x)
+                all_logits.append(logits.cpu())
+                all_g.append(g.cpu())
+                all_targets.append(y.cpu())
+        all_logits = torch.cat(all_logits, dim=0)
+        all_g = torch.cat(all_g, dim=0).squeeze()
+        all_targets = torch.cat(all_targets, dim=0)
     
     n = len(all_targets)
     

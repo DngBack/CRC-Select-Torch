@@ -2,7 +2,7 @@
 # organize_multi_seed_checkpoints.sh
 # Automatically organize checkpoints from wandb runs by detecting seeds
 
-cd /home/admin1/Desktop/CRC-Select-Torch
+cd "$(dirname "$0")"
 
 echo "========================================="
 echo "Auto-Organizing Multi-Seed Checkpoints"

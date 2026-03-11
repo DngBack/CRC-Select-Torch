@@ -362,7 +362,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--method_dirs', type=str, nargs='+', required=True,
                        help='directories containing results for each method')
-    parser.add_argument('-o', '--output_dir', type=str, default='../figures',
+    parser.add_argument('-o', '--output_dir', type=str, default='./figures',
                        help='directory to save plots')
     
     args = parser.parse_args()

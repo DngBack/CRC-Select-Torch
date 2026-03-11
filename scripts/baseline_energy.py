@@ -32,19 +32,20 @@ from crc.risk_utils import (
 
 
 def load_model(checkpoint_path, args):
+    device = args.device
     dataset_builder = DatasetBuilder(args.dataset, args.dataroot)
     backbone = getattr(args, 'backbone', 'vgg16')
     if backbone == 'vgg16':
-        features = vgg16_variant(32, args.dropout_prob).cuda()
+        features = vgg16_variant(32, args.dropout_prob).to(device)
         dim_features = args.dim_features
     else:
         features, dim_features = get_backbone(backbone, 32, args.dropout_prob)
-        features = features.cuda()
+        features = features.to(device)
     model = SelectiveNet(
         features, dim_features, dataset_builder.num_classes, div_by_ten=False
-    ).cuda()
+    ).to(device)
 
-    ckpt = torch.load(checkpoint_path, weights_only=False)
+    ckpt = torch.load(checkpoint_path, map_location=device, weights_only=False)
     if isinstance(ckpt, list):
         ckpt = ckpt[0]
     if 'state_dict' in ckpt:
@@ -117,10 +118,10 @@ def main(args):
     )
 
     cal_logits, cal_conf, cal_targets = collect_energy_predictions(
-        model, cal_loader, T=args.temperature
+        model, cal_loader, T=args.temperature, device=args.device
     )
     test_logits, test_conf, test_targets = collect_energy_predictions(
-        model, test_loader, T=args.temperature
+        model, test_loader, T=args.temperature, device=args.device
     )
 
     alpha_values = args.alpha_values or [0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
@@ -131,9 +132,10 @@ def main(args):
         tau_hat = crc['tau_hat']
         m = evaluate_at_tau(test_logits, test_conf, test_targets, tau_hat)
         violation_gap = max(m['accepted_loss_mass'] - alpha, 0.0)
-        auroc, aupr = compute_error_detection_auroc_aupr(
+        _auroc_aupr = compute_error_detection_auroc_aupr(
             test_logits, test_conf, test_targets
         )
+        auroc, aupr = _auroc_aupr['auroc'], _auroc_aupr['aupr']
         row = {
             'method': 'Energy',
             'dataset': args.dataset,
@@ -175,11 +177,12 @@ if __name__ == '__main__':
     parser.add_argument('--temperature', type=float, default=1.0,
                        help='temperature T for energy score')
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('--alpha_values', type=float, nargs='+', default=None)
-    parser.add_argument('-o', '--output_dir', type=str, default='../results_paper')
+    parser.add_argument('-o', '--output_dir', type=str, default='./results_paper')
     args = parser.parse_args()
+    args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     main(args)

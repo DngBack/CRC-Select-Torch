@@ -104,7 +104,7 @@ if __name__ == '__main__':
     parser.add_argument('--div_by_ten', action='store_true', help='divide by 10 when calculating g')
     # data
     parser.add_argument('-d', '--dataset', type=str, required=True)
-    parser.add_argument('--dataroot', type=str, default='/home/setarehc/selectivenet_pytorch/data', help='path to dataset root')
+    parser.add_argument('--dataroot', type=str, default='./data', help='path to dataset root')
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('--normalize', action='store_false')

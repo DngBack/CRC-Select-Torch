@@ -1,7 +1,7 @@
 #!/bin/bash
 # quick_setup.sh - Quick setup for evaluation
 
-cd /home/admin1/Desktop/CRC-Select-Torch
+cd "$(dirname "$0")"
 
 echo "========================================="
 echo "Quick Setup: Organizing Checkpoints"

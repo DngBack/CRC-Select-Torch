@@ -260,7 +260,7 @@ if __name__ == '__main__':
     parser.add_argument('--seeds', type=int, nargs='+', default=[42, 123, 456, 789, 999],
                        help='list of random seeds used in experiments')
     parser.add_argument('-o', '--output_dir', type=str, 
-                       default='../results/aggregated',
+                       default='./results/aggregated',
                        help='directory to save aggregated results')
     
     args = parser.parse_args()

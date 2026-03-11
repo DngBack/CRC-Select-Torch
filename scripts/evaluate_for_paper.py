@@ -22,7 +22,7 @@ Usage:
         --method_name "CRC-Select" \
         --dataset cifar10 \
         --seed 42 \
-        --output_dir ../results_paper
+        --output_dir ./results_paper
 """
 
 import os
@@ -259,7 +259,7 @@ if __name__ == '__main__':
     
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('-N', '--batch_size', type=int, default=128)
     parser.add_argument('-j', '--num_workers', type=int, default=8)
@@ -277,7 +277,7 @@ if __name__ == '__main__':
                        help='Risk levels for Coverage@Risk')
     
     # Output
-    parser.add_argument('-o', '--output_dir', type=str, default='../results_paper',
+    parser.add_argument('-o', '--output_dir', type=str, default='./results_paper',
                        help='Output directory for results')
     
     args = parser.parse_args()

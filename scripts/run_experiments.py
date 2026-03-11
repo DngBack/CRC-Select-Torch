@@ -198,12 +198,12 @@ if __name__ == '__main__':
                        help='path to YAML config file')
     parser.add_argument('--seeds', type=int, nargs='+', default=[42, 123, 456],
                        help='random seeds for experiments')
-    parser.add_argument('-o', '--output_dir', type=str, default='../results',
+    parser.add_argument('-o', '--output_dir', type=str, default='./results',
                        help='output directory for all results')
     
     # Data
     parser.add_argument('--dataset', type=str, default='cifar10')
-    parser.add_argument('--dataroot', type=str, default='../data')
+    parser.add_argument('--dataroot', type=str, default='./data')
     parser.add_argument('--batch_size', type=int, default=128)
     
     # Training

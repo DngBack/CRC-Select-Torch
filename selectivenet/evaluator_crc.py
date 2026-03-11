@@ -480,9 +480,11 @@ class CRCEvaluator:
         violation_gap = max(alm - alpha, 0.0)
 
         # AUROC / AUPR for error detection
-        auroc, aupr = compute_error_detection_auroc_aupr(
+        auroc_aupr = compute_error_detection_auroc_aupr(
             test_logits, test_g, test_targets
         )
+        auroc = auroc_aupr['auroc']
+        aupr = auroc_aupr['aupr']
 
         return {
             'alpha': alpha,

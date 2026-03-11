@@ -182,7 +182,7 @@ if __name__ == '__main__':
     from selectivenet.data import DatasetBuilder
 
     # dataset
-    dataset_builder = DatasetBuilder(name='cifar10', root_path='../data')
+    dataset_builder = DatasetBuilder(name='cifar10', root_path='./data')
     test_dataset   = dataset_builder(train=False, normalize=True)
     test_loader    = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False, num_workers=16, pin_memory=True)
 
