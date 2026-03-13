@@ -1,0 +1,78 @@
+/home/duong.xuan.bach/CRC-Select-Torch/scripts/generate_paper_figures.py:205: FutureWarning: 
+
+Passing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.
+
+  sns.boxplot(x='method', y='violation_gap', data=df, ax=ax, palette='Set2')
+====================================================================================================
+GENERATING PAPER FIGURES & TABLES
+====================================================================================================
+
+[Loading Results]
+  CRC-Select: 4 seed(s) loaded
+  vanilla: 4 seed(s) loaded
+  posthoc_crc: 4 seed(s) loaded
+  MSP: 4 seed(s) loaded
+  Energy: 4 seed(s) loaded
+  TempScaled_MSP: 4 seed(s) loaded
+  DeepGambler: 4 seed(s) loaded
+
+[Generating Figures]
+  Saved Figure 2 to figures/fig2_rc_frontier.png
+  Saved Figure 3 to figures/fig3_coverage_at_alpha.png
+  Saved Figure 4 to figures/fig4_violation_gap.png
+  Saved Figure 7 to figures/fig7_threshold_efficiency.png
+
+[Generating Tables]
+Traceback (most recent call last):
+  File "/home/duong.xuan.bach/CRC-Select-Torch/scripts/generate_paper_figures.py", line 415, in <module>
+    main(args)
+  File "/home/duong.xuan.bach/CRC-Select-Torch/scripts/generate_paper_figures.py", line 398, in main
+    table1_main_results(all_results, seeds,
+  File "/home/duong.xuan.bach/CRC-Select-Torch/scripts/generate_paper_figures.py", line 324, in table1_main_results
+    agg = df.groupby(['method', 'alpha']).agg(['mean', 'std']).reset_index()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 2291, in aggregate
+    result = op.agg()
+             ^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/apply.py", line 297, in agg
+    return self.agg_list_like()
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/apply.py", line 414, in agg_list_like
+    return self.agg_or_apply_list_like(op_name="agg")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/apply.py", line 1640, in agg_or_apply_list_like
+    keys, results = self.compute_list_like(op_name, selected_obj, kwargs)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/apply.py", line 473, in compute_list_like
+    new_res = getattr(colg, op_name)(func, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 464, in aggregate
+    ret = self._aggregate_multiple_funcs(func, *args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 522, in _aggregate_multiple_funcs
+    results[key] = self.aggregate(func, *args, **kwargs)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/generic.py", line 456, in aggregate
+    return getattr(self, func)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/groupby.py", line 2285, in mean
+    result = self._cython_agg_general(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/groupby.py", line 1808, in _cython_agg_general
+    new_mgr = data.grouped_reduce(array_func)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/internals/managers.py", line 2257, in grouped_reduce
+    res = func(arr)
+          ^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/groupby.py", line 1783, in array_func
+    result = self._grouper._cython_operation(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/ops.py", line 957, in _cython_operation
+    return cy_op.cython_operation(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/groupby/ops.py", line 553, in cython_operation
+    return values._groupby_op(
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/duong.xuan.bach/anaconda3/envs/crc-select/lib/python3.11/site-packages/pandas/core/arrays/base.py", line 2755, in _groupby_op
+    raise TypeError(
+TypeError: dtype 'str' does not support operation 'mean'

@@ -322,9 +322,18 @@ def train_crc_select(args):
     print(f"✓ Checkpoints saved to wandb: {wandb_checkpoint_path}")
     
     # Save to main checkpoint directory for evaluation
-    eval_checkpoint_path = f"checkpoints/CRC-Select/seed_{args.seed}.pth"
+    # Use absolute path based on this script's location to avoid cwd issues
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    workspace_dir = os.path.dirname(script_dir)
+    ckpt_dir = os.path.join(workspace_dir, 'checkpoints', 'CRC-Select')
+    os.makedirs(ckpt_dir, exist_ok=True)
+    eval_checkpoint_path = os.path.join(ckpt_dir, f'seed_{args.seed}.pth')
     torch.save(checkpoint_dict, eval_checkpoint_path)
-    print(f"✓ Checkpoint saved for evaluation: {eval_checkpoint_path}")
+    if os.path.exists(eval_checkpoint_path):
+        size_mb = os.path.getsize(eval_checkpoint_path) / 1e6
+        print(f"✓ Checkpoint saved for evaluation: {eval_checkpoint_path} ({size_mb:.1f} MB)")
+    else:
+        raise RuntimeError(f"Checkpoint save FAILED: {eval_checkpoint_path} not found after torch.save")
     print("=" * 80)
 
 

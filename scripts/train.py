@@ -19,6 +19,7 @@ from selectivenet.vgg_variant import vgg16_variant
 from selectivenet.model import SelectiveNet
 from selectivenet.loss import SelectiveLoss
 from selectivenet.data import DatasetBuilder
+from selectivenet.data_splits import get_split_loaders
 from selectivenet.evaluator import Evaluator
 from selectivenet.reproducibility import set_seed
 
@@ -42,12 +43,13 @@ def train(args):
     checkpoint_dir = "checkpoints/vanilla"
     os.makedirs(checkpoint_dir, exist_ok=True)
     
-    # dataset
+    # dataset — use the same 70/10/20 split as evaluate_for_paper.py so we
+    # never train on the held-out test portion
     dataset_builder = DatasetBuilder(name=args.dataset, root_path=args.dataroot)
-    train_dataset = dataset_builder(train=True, normalize=args.normalize, augmentation=args.augmentation)
-    val_dataset = dataset_builder(train=False, normalize=args.normalize, augmentation=args.augmentation)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+    full_train = dataset_builder(train=True, normalize=args.normalize, augmentation=args.augmentation)
+    train_loader, cal_loader, val_loader = get_split_loaders(
+        full_train, args.dataset, args.seed, args.batch_size, args.num_workers
+    )
 
     # model
     features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).cuda()
@@ -161,10 +163,18 @@ def train(args):
     print(f"✓ Checkpoints saved to wandb: {wandb_checkpoint_path}")
     
     # Save to main checkpoint directory for evaluation
-    if hasattr(args, 'seed'):
-        eval_checkpoint_path = f"checkpoints/vanilla/seed_{args.seed}.pth"
-        torch.save(checkpoint_dict, eval_checkpoint_path)
-        print(f"✓ Checkpoint saved for evaluation: {eval_checkpoint_path}")
+    # Use absolute path based on this script's location to avoid cwd issues
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    workspace_dir = os.path.dirname(script_dir)
+    ckpt_dir = os.path.join(workspace_dir, 'checkpoints', 'vanilla')
+    os.makedirs(ckpt_dir, exist_ok=True)
+    eval_checkpoint_path = os.path.join(ckpt_dir, f'seed_{args.seed}.pth')
+    torch.save(checkpoint_dict, eval_checkpoint_path)
+    if os.path.exists(eval_checkpoint_path):
+        size_mb = os.path.getsize(eval_checkpoint_path) / 1e6
+        print(f"✓ Checkpoint saved for evaluation: {eval_checkpoint_path} ({size_mb:.1f} MB)")
+    else:
+        raise RuntimeError(f"Checkpoint save FAILED: {eval_checkpoint_path} not found after torch.save")
 
 
 if __name__ == '__main__':

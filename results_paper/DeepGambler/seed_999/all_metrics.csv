@@ -1,0 +1,7 @@
+method,dataset,seed,alpha,tau_hat,test_accepted_loss_mass,test_selective_risk,test_coverage,test_selective_acc,violation_gap,violated,auroc,aupr
+DeepGambler,cifar10,999,0.01,0.0010010009864345193,0.0,0.0,0.0,0.0,0.0,False,0.5,0.9046
+DeepGambler,cifar10,999,0.02,0.0010010009864345193,0.0,0.0,0.0,0.0,0.0,False,0.5,0.9046
+DeepGambler,cifar10,999,0.05,0.0010010009864345193,0.0,0.0,0.0,0.0,0.0,False,0.5,0.9046
+DeepGambler,cifar10,999,0.1,0.0010010009864345193,0.0,0.0,0.0,0.0,0.0,False,0.5,0.9046
+DeepGambler,cifar10,999,0.15,0.0010010009864345193,0.0,0.0,0.0,0.0,0.0,False,0.5,0.9046
+DeepGambler,cifar10,999,0.2,0.0010010009864345193,0.0,0.0,0.0,0.0,0.0,False,0.5,0.9046

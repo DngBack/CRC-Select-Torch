@@ -1,0 +1,2 @@
+method,alpha,margin,violation_rate,num_violations,num_seeds,mean_accepted_loss_mass,std_accepted_loss_mass,mean_violation_gap,mean_coverage,std_coverage
+CRC-Select,0.01,0.0,1.0,4,4,0.011790210613980823,0.001609735106183545,0.0017902106139808245,0.7901249974966049,0.017310323235640124

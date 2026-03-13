@@ -1,0 +1,2 @@
+method,alpha,margin,violation_rate,num_violations,num_seeds,mean_accepted_loss_mass,std_accepted_loss_mass,mean_violation_gap,mean_coverage,std_coverage
+MSP,0.02,0.0,0.5,2,4,0.020704659633338427,0.002085472607115897,0.0013090705126523753,0.8483750075101852,0.005306764635144366

@@ -1,0 +1,2 @@
+alpha,tau_hat,cal_accepted_loss_mass,test_accepted_loss_mass,test_selective_risk,test_coverage,test_selective_acc,test_abstention_rate,violation_gap,violated,auroc,aupr,rc_auc_alm,rc_auc_risk,conservativeness,oracle_coverage,coverage_efficiency,method,dataset,seed
+0.1,0.0,0.0762374997138977,0.0861959308385849,0.0861959308385849,1.0,0.91839998960495,0.0,0.0,False,0.9118920052777209,0.4854028296103616,0.011587264336446329,0.013922034947986661,0.015559366345405584,1.0,1.0,posthoc_crc,cifar10,123

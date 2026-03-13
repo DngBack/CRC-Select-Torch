@@ -1,0 +1,5 @@
+seed,alpha,accepted_loss_mass,coverage,feasible,violated,violation_gap
+42,0.1,0.0884725674986839,1.0,True,False,0
+123,0.1,0.0861959308385849,1.0,True,False,0
+456,0.1,0.0785656049847602,1.0,True,False,0
+999,0.1,0.0834580734372139,1.0,True,False,0

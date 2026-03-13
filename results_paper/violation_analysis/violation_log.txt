@@ -1,0 +1,368 @@
+================================================================================
+Computing Accepted-Loss Mass Violation Rate Across Seeds
+================================================================================
+Seeds: [42, 123, 456, 999]
+Alpha values: [0.01, 0.02, 0.05, 0.1, 0.15, 0.2]
+Margin: 0.0%
+================================================================================
+
+[CRC-Select]
+  Alpha = 0.010
+    Violation rate: 100.0% (4/4)
+    Mean A(tau): 0.0118 ± 0.0016
+    Mean violation gap: 0.0018
+    Mean coverage: 0.7901 ± 0.0173
+  Alpha = 0.020
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0202 ± 0.0041
+    Mean violation gap: 0.0020
+    Mean coverage: 0.8485 ± 0.0204
+  Alpha = 0.050
+    Violation rate: 25.0% (1/4)
+    Mean A(tau): 0.0500 ± 0.0049
+    Mean violation gap: 0.0019
+    Mean coverage: 0.9414 ± 0.0097
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0835 ± 0.0050
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0812 ± 0.0054
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0825 ± 0.0056
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+
+[vanilla]
+  Alpha = 0.010
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0099 ± 0.0020
+    Mean violation gap: 0.0009
+    Mean coverage: 0.7638 ± 0.0252
+  Alpha = 0.020
+    Violation rate: 75.0% (3/4)
+    Mean A(tau): 0.0212 ± 0.0020
+    Mean violation gap: 0.0015
+    Mean coverage: 0.8528 ± 0.0014
+  Alpha = 0.050
+    Violation rate: 75.0% (3/4)
+    Mean A(tau): 0.0517 ± 0.0055
+    Mean violation gap: 0.0036
+    Mean coverage: 0.9430 ± 0.0048
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0842 ± 0.0037
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0834 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0838 ± 0.0027
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+
+[posthoc_crc]
+  Alpha = 0.010
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0099 ± 0.0020
+    Mean violation gap: 0.0009
+    Mean coverage: 0.7638 ± 0.0252
+  Alpha = 0.020
+    Violation rate: 75.0% (3/4)
+    Mean A(tau): 0.0212 ± 0.0020
+    Mean violation gap: 0.0015
+    Mean coverage: 0.8528 ± 0.0014
+  Alpha = 0.050
+    Violation rate: 75.0% (3/4)
+    Mean A(tau): 0.0517 ± 0.0055
+    Mean violation gap: 0.0036
+    Mean coverage: 0.9430 ± 0.0048
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0842 ± 0.0037
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0834 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0838 ± 0.0027
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+
+[MSP]
+  Alpha = 0.010
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0109 ± 0.0033
+    Mean violation gap: 0.0019
+    Mean coverage: 0.7645 ± 0.0354
+  Alpha = 0.020
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0207 ± 0.0021
+    Mean violation gap: 0.0013
+    Mean coverage: 0.8484 ± 0.0053
+  Alpha = 0.050
+    Violation rate: 75.0% (3/4)
+    Mean A(tau): 0.0515 ± 0.0032
+    Mean violation gap: 0.0021
+    Mean coverage: 0.9445 ± 0.0063
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+
+[Energy]
+  Alpha = 0.010
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0104 ± 0.0032
+    Mean violation gap: 0.0015
+    Mean coverage: 0.7373 ± 0.0412
+  Alpha = 0.020
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0204 ± 0.0021
+    Mean violation gap: 0.0011
+    Mean coverage: 0.8477 ± 0.0063
+  Alpha = 0.050
+    Violation rate: 100.0% (4/4)
+    Mean A(tau): 0.0532 ± 0.0026
+    Mean violation gap: 0.0032
+    Mean coverage: 0.9479 ± 0.0068
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+
+[TempScaled_MSP]
+  Alpha = 0.010
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0106 ± 0.0034
+    Mean violation gap: 0.0018
+    Mean coverage: 0.7548 ± 0.0432
+  Alpha = 0.020
+    Violation rate: 50.0% (2/4)
+    Mean A(tau): 0.0206 ± 0.0021
+    Mean violation gap: 0.0012
+    Mean coverage: 0.8485 ± 0.0057
+  Alpha = 0.050
+    Violation rate: 75.0% (3/4)
+    Mean A(tau): 0.0520 ± 0.0028
+    Mean violation gap: 0.0022
+    Mean coverage: 0.9464 ± 0.0062
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0841 ± 0.0035
+    Mean violation gap: 0.0000
+    Mean coverage: 1.0000 ± 0.0000
+
+[DeepGambler]
+  Alpha = 0.010
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0000 ± 0.0000
+    Mean violation gap: 0.0000
+    Mean coverage: 0.0000 ± 0.0000
+  Alpha = 0.020
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0000 ± 0.0000
+    Mean violation gap: 0.0000
+    Mean coverage: 0.0000 ± 0.0000
+  Alpha = 0.050
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0000 ± 0.0000
+    Mean violation gap: 0.0000
+    Mean coverage: 0.0000 ± 0.0000
+  Alpha = 0.100
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0000 ± 0.0000
+    Mean violation gap: 0.0000
+    Mean coverage: 0.0000 ± 0.0000
+  Alpha = 0.150
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0000 ± 0.0000
+    Mean violation gap: 0.0000
+    Mean coverage: 0.0000 ± 0.0000
+  Alpha = 0.200
+    Violation rate: 0.0% (0/4)
+    Mean A(tau): 0.0000 ± 0.0000
+    Mean violation gap: 0.0000
+    Mean coverage: 0.0000 ± 0.0000
+
+================================================================================
+Saving Results
+================================================================================
+  ✓ Saved comparison table to results_paper/violation_analysis/violation_rate_comparison.csv
+
+================================================================================
+Comparison Table: Accepted-Loss Mass Violation Rates
+================================================================================
+        method  alpha  violation_rate  num_violations  num_seeds  mean_accepted_loss_mass  std_accepted_loss_mass  mean_violation_gap  mean_coverage  std_coverage
+    CRC-Select   0.01            1.00               4          4                 0.011790                0.001610            0.001790       0.790125      0.017310
+    CRC-Select   0.02            0.50               2          4                 0.020202                0.004149            0.002042       0.848475      0.020447
+    CRC-Select   0.05            0.25               1          4                 0.050016                0.004894            0.001940       0.941450      0.009695
+    CRC-Select   0.10            0.00               0          4                 0.083456                0.004960            0.000000       1.000000      0.000000
+    CRC-Select   0.15            0.00               0          4                 0.081198                0.005407            0.000000       1.000000      0.000000
+    CRC-Select   0.20            0.00               0          4                 0.082460                0.005632            0.000000       1.000000      0.000000
+       vanilla   0.01            0.50               2          4                 0.009917                0.002034            0.000930       0.763800      0.025171
+       vanilla   0.02            0.75               3          4                 0.021163                0.002029            0.001526       0.852800      0.001442
+       vanilla   0.05            0.75               3          4                 0.051692                0.005485            0.003634       0.943025      0.004812
+       vanilla   0.10            0.00               0          4                 0.084173                0.003692            0.000000       1.000000      0.000000
+       vanilla   0.15            0.00               0          4                 0.083420                0.003451            0.000000       1.000000      0.000000
+       vanilla   0.20            0.00               0          4                 0.083756                0.002650            0.000000       1.000000      0.000000
+   posthoc_crc   0.01            0.50               2          4                 0.009917                0.002034            0.000930       0.763800      0.025171
+   posthoc_crc   0.02            0.75               3          4                 0.021163                0.002029            0.001526       0.852800      0.001442
+   posthoc_crc   0.05            0.75               3          4                 0.051692                0.005485            0.003634       0.943025      0.004812
+   posthoc_crc   0.10            0.00               0          4                 0.084173                0.003692            0.000000       1.000000      0.000000
+   posthoc_crc   0.15            0.00               0          4                 0.083420                0.003451            0.000000       1.000000      0.000000
+   posthoc_crc   0.20            0.00               0          4                 0.083756                0.002650            0.000000       1.000000      0.000000
+           MSP   0.01            0.50               2          4                 0.010888                0.003345            0.001864       0.764475      0.035399
+           MSP   0.02            0.50               2          4                 0.020705                0.002085            0.001309       0.848375      0.005307
+           MSP   0.05            0.75               3          4                 0.051523                0.003243            0.002141       0.944500      0.006325
+           MSP   0.10            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+           MSP   0.15            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+           MSP   0.20            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+        Energy   0.01            0.50               2          4                 0.010414                0.003161            0.001519       0.737325      0.041229
+        Energy   0.02            0.50               2          4                 0.020354                0.002067            0.001058       0.847650      0.006336
+        Energy   0.05            1.00               4          4                 0.053243                0.002611            0.003243       0.947900      0.006827
+        Energy   0.10            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+        Energy   0.15            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+        Energy   0.20            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+TempScaled_MSP   0.01            0.50               2          4                 0.010646                0.003430            0.001785       0.754800      0.043229
+TempScaled_MSP   0.02            0.50               2          4                 0.020606                0.002052            0.001161       0.848550      0.005656
+TempScaled_MSP   0.05            0.75               3          4                 0.051959                0.002823            0.002246       0.946400      0.006179
+TempScaled_MSP   0.10            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+TempScaled_MSP   0.15            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+TempScaled_MSP   0.20            0.00               0          4                 0.084140                0.003511            0.000000       1.000000      0.000000
+   DeepGambler   0.01            0.00               0          4                 0.000000                0.000000            0.000000       0.000000      0.000000
+   DeepGambler   0.02            0.00               0          4                 0.000000                0.000000            0.000000       0.000000      0.000000
+   DeepGambler   0.05            0.00               0          4                 0.000000                0.000000            0.000000       0.000000      0.000000
+   DeepGambler   0.10            0.00               0          4                 0.000000                0.000000            0.000000       0.000000      0.000000
+   DeepGambler   0.15            0.00               0          4                 0.000000                0.000000            0.000000       0.000000      0.000000
+   DeepGambler   0.20            0.00               0          4                 0.000000                0.000000            0.000000       0.000000      0.000000
+
+================================================================================
+LaTeX Table
+================================================================================
+\begin{tabular}{lcccccccccccccccccc}
+\toprule
+Method & \multicolumn{3}{c}{$\alpha=0.01$} & \multicolumn{3}{c}{$\alpha=0.02$} & \multicolumn{3}{c}{$\alpha=0.05$} & \multicolumn{3}{c}{$\alpha=0.1$} & \multicolumn{3}{c}{$\alpha=0.15$} & \multicolumn{3}{c}{$\alpha=0.2$} \\
+\cmidrule(lr){2-19}
+ & Viol. & $\hat A$ & Cov. & Viol. & $\hat A$ & Cov. & Viol. & $\hat A$ & Cov. & Viol. & $\hat A$ & Cov. & Viol. & $\hat A$ & Cov. & Viol. & $\hat A$ & Cov. \\
+\midrule
+CRC-Select & 100.0\% & 0.012 & 0.790 & 50.0\% & 0.020 & 0.848 & 25.0\% & 0.050 & 0.941 & 0.0\% & 0.083 & 1.000 & 0.0\% & 0.081 & 1.000 & 0.0\% & 0.082 & 1.000 \\
+vanilla & 50.0\% & 0.010 & 0.764 & 75.0\% & 0.021 & 0.853 & 75.0\% & 0.052 & 0.943 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.083 & 1.000 & 0.0\% & 0.084 & 1.000 \\
+posthoc\_crc & 50.0\% & 0.010 & 0.764 & 75.0\% & 0.021 & 0.853 & 75.0\% & 0.052 & 0.943 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.083 & 1.000 & 0.0\% & 0.084 & 1.000 \\
+MSP & 50.0\% & 0.011 & 0.764 & 50.0\% & 0.021 & 0.848 & 75.0\% & 0.052 & 0.944 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.084 & 1.000 \\
+Energy & 50.0\% & 0.010 & 0.737 & 50.0\% & 0.020 & 0.848 & 100.0\% & 0.053 & 0.948 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.084 & 1.000 \\
+TempScaled\_MSP & 50.0\% & 0.011 & 0.755 & 50.0\% & 0.021 & 0.849 & 75.0\% & 0.052 & 0.946 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.084 & 1.000 & 0.0\% & 0.084 & 1.000 \\
+DeepGambler & 0.0\% & 0.000 & 0.000 & 0.0\% & 0.000 & 0.000 & 0.0\% & 0.000 & 0.000 & 0.0\% & 0.000 & 0.000 & 0.0\% & 0.000 & 0.000 & 0.0\% & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}
+
+✓ Saved LaTeX table to results_paper/violation_analysis/violation_rate_table.tex
+
+================================================================================
+Summary
+================================================================================
+
+CRC-Select:
+  α=0.01: 100.0% violations (A(tau): 0.0118±0.0016) ❌
+  α=0.02: 50.0% violations (A(tau): 0.0202±0.0041) ❌
+  α=0.05: 25.0% violations (A(tau): 0.0500±0.0049) ⚠️
+  α=0.10: 0.0% violations (A(tau): 0.0835±0.0050) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0812±0.0054) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0825±0.0056) ✅
+
+vanilla:
+  α=0.01: 50.0% violations (A(tau): 0.0099±0.0020) ❌
+  α=0.02: 75.0% violations (A(tau): 0.0212±0.0020) ❌
+  α=0.05: 75.0% violations (A(tau): 0.0517±0.0055) ❌
+  α=0.10: 0.0% violations (A(tau): 0.0842±0.0037) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0834±0.0035) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0838±0.0027) ✅
+
+posthoc_crc:
+  α=0.01: 50.0% violations (A(tau): 0.0099±0.0020) ❌
+  α=0.02: 75.0% violations (A(tau): 0.0212±0.0020) ❌
+  α=0.05: 75.0% violations (A(tau): 0.0517±0.0055) ❌
+  α=0.10: 0.0% violations (A(tau): 0.0842±0.0037) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0834±0.0035) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0838±0.0027) ✅
+
+MSP:
+  α=0.01: 50.0% violations (A(tau): 0.0109±0.0033) ❌
+  α=0.02: 50.0% violations (A(tau): 0.0207±0.0021) ❌
+  α=0.05: 75.0% violations (A(tau): 0.0515±0.0032) ❌
+  α=0.10: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+
+Energy:
+  α=0.01: 50.0% violations (A(tau): 0.0104±0.0032) ❌
+  α=0.02: 50.0% violations (A(tau): 0.0204±0.0021) ❌
+  α=0.05: 100.0% violations (A(tau): 0.0532±0.0026) ❌
+  α=0.10: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+
+TempScaled_MSP:
+  α=0.01: 50.0% violations (A(tau): 0.0106±0.0034) ❌
+  α=0.02: 50.0% violations (A(tau): 0.0206±0.0021) ❌
+  α=0.05: 75.0% violations (A(tau): 0.0520±0.0028) ❌
+  α=0.10: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0841±0.0035) ✅
+
+DeepGambler:
+  α=0.01: 0.0% violations (A(tau): 0.0000±0.0000) ✅
+  α=0.02: 0.0% violations (A(tau): 0.0000±0.0000) ✅
+  α=0.05: 0.0% violations (A(tau): 0.0000±0.0000) ✅
+  α=0.10: 0.0% violations (A(tau): 0.0000±0.0000) ✅
+  α=0.15: 0.0% violations (A(tau): 0.0000±0.0000) ✅
+  α=0.20: 0.0% violations (A(tau): 0.0000±0.0000) ✅
+
+================================================================================
+✓ All results saved to results_paper/violation_analysis
+================================================================================

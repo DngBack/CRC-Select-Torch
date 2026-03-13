@@ -1,0 +1,2 @@
+method,alpha,margin,violation_rate,num_violations,num_seeds,mean_accepted_loss_mass,std_accepted_loss_mass,mean_violation_gap,mean_coverage,std_coverage
+Energy,0.01,0.0,0.5,2,4,0.0104139934992417,0.0031608396688541773,0.0015194298513233253,0.7373250126838684,0.041228829628330764
