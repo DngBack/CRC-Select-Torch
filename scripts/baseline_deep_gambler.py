@@ -99,17 +99,20 @@ def train_deep_gambler(args):
     model = DeepGamblerNet(features, dim_f, dataset_builder.num_classes).to(device)
     criterion = GamblerLoss(reward=args.reward)
 
-    full_train = dataset_builder(train=True, normalize=True, augmentation='original')
+    augmentation = getattr(args, 'augmentation', 'original')
+    full_train = dataset_builder(train=True, normalize=True, augmentation=augmentation)
     train_loader, cal_loader, test_loader = get_split_loaders(
         full_train, args.dataset, args.seed,
         args.batch_size, args.num_workers
     )
 
+    scheduler_step = getattr(args, 'scheduler_step', 25)
+    scheduler_gamma = getattr(args, 'scheduler_gamma', 0.5)
     optimizer = torch.optim.SGD(
         model.parameters(), lr=0.1, momentum=0.9,
         weight_decay=5e-4, nesterov=True
     )
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=scheduler_step, gamma=scheduler_gamma)
 
     for epoch in range(args.num_epochs):
         model.train()
@@ -126,7 +129,10 @@ def train_deep_gambler(args):
             print(f"  Epoch {epoch+1}/{args.num_epochs}")
 
     # Save
-    ckpt_dir = os.path.join('checkpoints', 'DeepGambler')
+    _ckpt_dir_arg = getattr(args, 'checkpoint_dir', 'checkpoints/DeepGambler')
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    workspace_dir = os.path.dirname(script_dir)
+    ckpt_dir = _ckpt_dir_arg if os.path.isabs(_ckpt_dir_arg) else os.path.join(workspace_dir, _ckpt_dir_arg)
     os.makedirs(ckpt_dir, exist_ok=True)
     ckpt_path = os.path.join(ckpt_dir, f'seed_{args.seed}.pth')
     torch.save({'state_dict': model.state_dict()}, ckpt_path, _use_new_zipfile_serialization=True)
@@ -212,7 +218,8 @@ def main(args):
             model.load_state_dict(ckpt)
         model.eval()
 
-        full_train = dataset_builder(train=True, normalize=True, augmentation='original')
+        _aug = getattr(args, 'augmentation', 'original')
+        full_train = dataset_builder(train=True, normalize=True, augmentation=_aug)
         _, cal_loader, test_loader = get_split_loaders(
             full_train, args.dataset, args.seed,
             args.batch_size, args.num_workers
@@ -282,6 +289,12 @@ if __name__ == '__main__':
     parser.add_argument('-j', '--num_workers', type=int, default=8)
     parser.add_argument('--alpha_values', type=float, nargs='+', default=None)
     parser.add_argument('-o', '--output_dir', type=str, default='./results_paper')
+    parser.add_argument('--augmentation', type=str, default='original',
+                       help='data augmentation: original, randcrop, tf, lili')
+    parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/DeepGambler',
+                       help='directory to save trained checkpoint')
+    parser.add_argument('--scheduler_step', type=int, default=25)
+    parser.add_argument('--scheduler_gamma', type=float, default=0.5)
     args = parser.parse_args()
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     main(args)

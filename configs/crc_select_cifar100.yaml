@@ -1,0 +1,76 @@
+# CRC-Select Configuration for CIFAR-100
+# CIFAR-100 has 100 classes — harder than CIFAR-10, so we use:
+#   - More training epochs (300)
+#   - WideResNet-28-10 backbone (standard SOTA for CIFAR-100)
+#   - randcrop augmentation (RandomCrop+padding + HorizontalFlip)
+#   - Slightly larger lm (coverage Lagrange multiplier)
+
+# ===================== Model =====================
+model:
+  backbone: wrn28_10         # WideResNet-28-10: standard for CIFAR-100
+  dim_features: 640          # 64 * widen_factor(10) for WRN-28-10
+  dropout_prob: 0.3
+  div_by_ten: false
+
+# ===================== Data =====================
+data:
+  dataset: cifar100
+  dataroot: ./data
+  batch_size: 128
+  num_workers: 8
+  normalize: true
+  augmentation: randcrop     # RandomCrop(32,padding=4) + HorizontalFlip
+  split_ratios: [0.70, 0.10, 0.20]
+
+# ===================== CRC-Select =====================
+crc_select:
+  alpha_risk: 0.1
+  tau: 0.5
+  warmup_epochs: 30          # Longer warmup for harder dataset
+  recalibrate_every: 5
+  mu_init: 1.0
+  dual_lr: 0.01
+  delta: 0.1
+  use_dual_update: true
+  loss_variant: hinge
+
+# ===================== Training =====================
+training:
+  num_epochs: 300            # More epochs for CIFAR-100
+  lr: 0.1
+  wd: 0.0005
+  momentum: 0.9
+  nesterov: true             # Nesterov momentum helps on CIFAR-100
+  scheduler_step: 60         # Adjusted for 300-epoch schedule
+  scheduler_gamma: 0.2       # Steeper decay
+
+# ===================== SelectiveNet loss =====================
+selective_loss:
+  coverage: 0.8
+  alpha: 0.5
+  lm: 32.0
+
+# ===================== Evaluation =====================
+evaluation:
+  taus: [0.1, 0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.9]
+  alphas: [0.01, 0.05, 0.10, 0.15, 0.20, 0.30]
+  ood_datasets: [svhn, cifar100c]
+  ood_mixtures: [0.1, 0.3, 0.5]
+  seeds: [42, 123, 456, 789, 999]
+
+# ===================== Baselines =====================
+baselines:
+  - msp
+  - temp_scaled
+  - selectivenet
+  - deep_gambler
+  - energy
+  - posthoc_crc
+
+# ===================== Dataset info =====================
+datasets:
+  cifar100:
+    num_classes: 100
+    input_size: 32
+    ood_pair: svhn
+    corruption: cifar100c

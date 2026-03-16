@@ -1,0 +1,2 @@
+method,dataset,seed,primary_alpha,tau_hat,accepted_loss_mass,selective_risk,coverage,selective_acc,violation_gap,violated,auroc,aupr,rc_auc_alm,rc_auc_risk,conservativeness,coverage_efficiency
+vanilla,cifar100,999,0.1,0.04483122006058693,0.09892262518405914,0.13521409034729004,0.7315999865531921,0.882722795009613,0.0,False,0.8428239873934711,0.5713130789252668,0.06615534475390221,0.08515677805464486,0.005382424592971807,0.984954128230939

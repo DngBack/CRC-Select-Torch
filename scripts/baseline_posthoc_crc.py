@@ -26,6 +26,7 @@ from selectivenet.data import DatasetBuilder
 from selectivenet.data_splits import get_split_loaders
 from selectivenet.evaluator_crc import CRCEvaluator
 from selectivenet.reproducibility import set_seed
+from selectivenet.resnet_variant import get_backbone
 
 from crc.calibrate import crc_calibrate_threshold
 from crc.risk_utils import (
@@ -39,9 +40,17 @@ def load_vanilla_selectivenet(checkpoint_path, args):
     """Load pre-trained vanilla SelectiveNet model."""
     device = args.device
     dataset_builder = DatasetBuilder(name=args.dataset, root_path=args.dataroot)
-    features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).to(device)
+    backbone = getattr(args, 'backbone', 'vgg16')
+    if backbone == 'vgg16':
+        features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).to(device)
+        dim_features = args.dim_features
+    else:
+        features, dim_features = get_backbone(
+            backbone, dataset_builder.input_size, args.dropout_prob
+        )
+        features = features.to(device)
     model = SelectiveNet(
-        features, args.dim_features, dataset_builder.num_classes,
+        features, dim_features, dataset_builder.num_classes,
         div_by_ten=args.div_by_ten
     ).to(device)
     
@@ -203,6 +212,9 @@ if __name__ == '__main__':
     parser.add_argument('--dim_features', type=int, default=512)
     parser.add_argument('--dropout_prob', type=float, default=0.3)
     parser.add_argument('--div_by_ten', action='store_true')
+    parser.add_argument('--backbone', type=str, default='vgg16',
+                       choices=['vgg16', 'resnet18', 'wrn28_10'],
+                       help='backbone architecture')
     
     # Data
     parser.add_argument('-d', '--dataset', type=str, default='cifar10')

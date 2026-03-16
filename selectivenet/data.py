@@ -67,6 +67,12 @@ class DatasetBuilder(object):
                 torchvision.transforms.RandomResizedCrop(input_size),
                 torchvision.transforms.RandomHorizontalFlip(),
                 ])
+            elif augmentation == 'randcrop':
+                # Standard augmentation for CIFAR-100: RandomCrop + HorizontalFlip
+                transform.extend([
+                    torchvision.transforms.RandomCrop(input_size, padding=4),
+                    torchvision.transforms.RandomHorizontalFlip(),
+                ])
             else: raise ValueError('Incorrect augmentation type')
         else:
             pass

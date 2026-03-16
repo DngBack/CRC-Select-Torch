@@ -22,6 +22,7 @@ from selectivenet.data import DatasetBuilder
 from selectivenet.data_splits import get_split_loaders
 from selectivenet.evaluator import Evaluator
 from selectivenet.reproducibility import set_seed
+from selectivenet.resnet_variant import get_backbone
 
 import wandb
 WANDB_PROJECT_NAME="selective_net"
@@ -40,7 +41,7 @@ def train(args):
     log_path = wandb.run.dir
     
     # Create checkpoint directory for evaluation
-    checkpoint_dir = "checkpoints/vanilla"
+    checkpoint_dir = getattr(args, 'checkpoint_dir', 'checkpoints/vanilla')
     os.makedirs(checkpoint_dir, exist_ok=True)
     
     # dataset — use the same 70/10/20 split as evaluate_for_paper.py so we
@@ -52,8 +53,16 @@ def train(args):
     )
 
     # model
-    features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).cuda()
-    model = SelectiveNet(features, args.dim_features, dataset_builder.num_classes, div_by_ten=args.div_by_ten).cuda()
+    backbone = getattr(args, 'backbone', 'vgg16')
+    if backbone == 'vgg16':
+        features = vgg16_variant(dataset_builder.input_size, args.dropout_prob).cuda()
+        dim_features = args.dim_features
+    else:
+        features, dim_features = get_backbone(
+            backbone, dataset_builder.input_size, args.dropout_prob
+        )
+        features = features.cuda()
+    model = SelectiveNet(features, dim_features, dataset_builder.num_classes, div_by_ten=args.div_by_ten).cuda()
     if torch.cuda.device_count() > 1: model = torch.nn.DataParallel(model)
 
     # optimizer
@@ -163,10 +172,14 @@ def train(args):
     print(f"✓ Checkpoints saved to wandb: {wandb_checkpoint_path}")
     
     # Save to main checkpoint directory for evaluation
-    # Use absolute path based on this script's location to avoid cwd issues
     script_dir = os.path.dirname(os.path.abspath(__file__))
     workspace_dir = os.path.dirname(script_dir)
-    ckpt_dir = os.path.join(workspace_dir, 'checkpoints', 'vanilla')
+    # Resolve checkpoint_dir: if relative, anchor to workspace root
+    _ckpt_dir_arg = getattr(args, 'checkpoint_dir', 'checkpoints/vanilla')
+    if os.path.isabs(_ckpt_dir_arg):
+        ckpt_dir = _ckpt_dir_arg
+    else:
+        ckpt_dir = os.path.join(workspace_dir, _ckpt_dir_arg)
     os.makedirs(ckpt_dir, exist_ok=True)
     eval_checkpoint_path = os.path.join(ckpt_dir, f'seed_{args.seed}.pth')
     torch.save(checkpoint_dict, eval_checkpoint_path)
@@ -185,6 +198,11 @@ if __name__ == '__main__':
     parser.add_argument('--dim_features', type=int, default=512)
     parser.add_argument('--dropout_prob', type=float, default=0.3)
     parser.add_argument('--div_by_ten', action='store_true', help='divide by 10 when calculating g') # flag - default is false
+    parser.add_argument('--backbone', type=str, default='vgg16',
+                       choices=['vgg16', 'resnet18', 'wrn28_10'],
+                       help='backbone architecture')
+    parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/vanilla',
+                       help='directory to save checkpoints')
     # data
     parser.add_argument('-d', '--dataset', type=str, required=True)
     parser.add_argument('--dataroot', type=str, default='./data', help='path to dataset root')
